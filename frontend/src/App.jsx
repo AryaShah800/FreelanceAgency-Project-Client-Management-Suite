@@ -10,6 +10,7 @@ import Projects from './pages/Projects';
 import Tasks from './pages/Tasks';
 import Invoices from './pages/Invoices';
 import AiGenerator from './pages/AiGenerator';
+import PublicPortal from './pages/PublicPortal';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
@@ -17,7 +18,7 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   return (
-    <div className="flex min-h-screen bg-dark-bg text-dark-text font-sans">
+    <div className="flex min-h-screen bg-paper text-ink font-sans">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         {children}
@@ -33,6 +34,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/portal/share/:token" element={<PublicPortal />} />
           <Route
             path="/"
             element={
