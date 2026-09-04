@@ -7,6 +7,7 @@ import com.freelancesuite.service.ClientService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,6 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/clients")
+@PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
 public class ClientController {
 
     private final ClientService clientService;

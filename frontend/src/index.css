@@ -2,22 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .glass-panel {
-    background: rgba(30, 41, 59, 0.7);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+:root {
+  --color-bg: #F7F4EE;
+  --color-surface: #FFFFFF;
+  --color-ink: #1C1B19;
+  --color-ink-muted: #6B6862;
+  --color-ink-faint: #A39E93;
+  --color-brass: #B8860B;
+  --color-brass-soft: #E8D9B5;
+  --color-brass-dark: #8C6508;
+  --color-forest: #1F4B43;
+  --color-forest-soft: #DCE8E5;
+  --color-rust: #A6432B;
+  --color-rust-soft: #F0DCD5;
+  --color-border: #E4DFD3;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: 'Space Grotesk', sans-serif;
   }
-  .glass-card {
-    background: rgba(30, 41, 59, 0.5);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@layer utilities {
+  .ledger-panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+  .ledger-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     transition: all 0.2s ease-in-out;
   }
-  .glass-card:hover {
-    background: rgba(30, 41, 59, 0.8);
-    border-color: rgba(99, 102, 241, 0.3);
-    transform: translateY(-2px);
+  .ledger-card:hover {
+    border-color: var(--color-brass);
+    transform: translateY(-1px);
   }
 }
 
@@ -27,12 +48,12 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: var(--color-bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--color-border);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--color-ink-faint);
 }

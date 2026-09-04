@@ -1,0 +1,17 @@
+# Local environment and editor settings
+.env
+.env.*
+!.env.example
+.vscode/
+
+# Java / Maven build output and local cache
+backend/target/
+backend/.m2/
+
+# Node / Vite generated files
+frontend/node_modules/
+frontend/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
