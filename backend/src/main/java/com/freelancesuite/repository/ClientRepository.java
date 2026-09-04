@@ -13,4 +13,5 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     List<Client> findByAgencyId(Long agencyId);
     List<Client> findByAgencyIdAndDealStage(Long agencyId, DealStage dealStage);
     Optional<Client> findByIdAndAgencyId(Long id, Long agencyId);
+    Optional<Client> findByAgencyIdAndCompanyNameIgnoreCase(Long agencyId, String companyName);
 }

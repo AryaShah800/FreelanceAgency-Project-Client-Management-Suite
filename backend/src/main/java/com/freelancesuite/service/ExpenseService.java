@@ -28,7 +28,9 @@ public class ExpenseService {
         this.projectRepository = projectRepository;
     }
 
-    public List<ExpenseDto> getExpensesByProject(Long projectId) {
+    public List<ExpenseDto> getExpensesByProject(Long projectId, Long agencyId) {
+        projectRepository.findByIdAndAgencyId(projectId, agencyId)
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("You cannot access this project's expenses"));
         return expenseRepository.findByProjectId(projectId)
                 .stream().map(this::mapToDto).collect(Collectors.toList());
     }

@@ -7,6 +7,8 @@ import com.freelancesuite.entity.*;
 import com.freelancesuite.entity.enums.DealStage;
 import com.freelancesuite.entity.enums.InvoiceStatus;
 import com.freelancesuite.repository.*;
+import com.freelancesuite.entity.Agency;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,16 +26,20 @@ public class ProposalConversionService {
     private final ProjectRepository projectRepository;
     private final ClientRepository clientRepository;
     private final InvoiceRepository invoiceRepository;
+    private final AgencyRepository agencyRepository;
     private final AuditEventService auditEventService;
 
     // In-memory token registry for share tokens
     private final Map<String, PublicPortalProposalDto> tokenRegistry = new ConcurrentHashMap<>();
+    private final Map<String, Long> tokenAgencyIds = new ConcurrentHashMap<>();
 
     @Autowired
-    public ProposalConversionService(ProjectRepository projectRepository, ClientRepository clientRepository, InvoiceRepository invoiceRepository, AuditEventService auditEventService) {
+    public ProposalConversionService(ProjectRepository projectRepository, ClientRepository clientRepository, InvoiceRepository invoiceRepository,
+                                     AgencyRepository agencyRepository, AuditEventService auditEventService) {
         this.projectRepository = projectRepository;
         this.clientRepository = clientRepository;
         this.invoiceRepository = invoiceRepository;
+        this.agencyRepository = agencyRepository;
         this.auditEventService = auditEventService;
 
         // Seed demo share token for instant testing
@@ -56,6 +62,11 @@ public class ProposalConversionService {
                 .build();
 
         tokenRegistry.put(demoToken, dto);
+    }
+
+    /** Binds the development-only sample proposal to the agency that owns it. */
+    public void bindDemoShareToken(Long agencyId) {
+        tokenAgencyIds.put("demo-proposal-token-2026", agencyId);
     }
 
     public PublicPortalProposalDto getPublicProposal(String shareToken) {
@@ -93,23 +104,30 @@ public class ProposalConversionService {
     public Map<String, Object> convertProposalToProject(String shareToken) {
         PublicPortalProposalDto dto = getPublicProposal(shareToken);
 
+        if (!Boolean.TRUE.equals(dto.getIsSigned())) {
+            throw new AccessDeniedException("A proposal must be signed before it can be converted");
+        }
+
         if (Boolean.TRUE.equals(dto.getIsConvertedToProject())) {
             throw new IllegalStateException("Proposal has already been converted to an active project.");
         }
 
-        // 1. Fetch or create client
-        Client client = clientRepository.findAll().stream()
-                .filter(c -> c.getCompanyName().equalsIgnoreCase(dto.getClientName()))
-                .findFirst()
-                .orElseGet(() -> {
-                    Client newC = Client.builder()
-                            .companyName(dto.getClientName())
-                            .contactPerson("Sarah Jenkins")
-                            .email("sarah@fintech.io")
-                            .dealStage(DealStage.WON)
-                            .build();
-                    return clientRepository.save(newC);
-                });
+        Long agencyId = tokenAgencyIds.get(shareToken);
+        if (agencyId == null) {
+            throw new IllegalStateException("This proposal is not associated with an agency and cannot be converted");
+        }
+        Agency agency = agencyRepository.findById(agencyId)
+                .orElseThrow(() -> new IllegalStateException("The proposal's agency no longer exists"));
+
+        // 1. Fetch or create the client inside the proposal's agency only.
+        Client client = clientRepository.findByAgencyIdAndCompanyNameIgnoreCase(agency.getId(), dto.getClientName())
+                .orElseGet(() -> clientRepository.save(Client.builder()
+                        .agency(agency)
+                        .companyName(dto.getClientName())
+                        .contactPerson(dto.getSignatureName())
+                        .email("sarah@fintech.io")
+                        .dealStage(DealStage.WON)
+                        .build()));
 
         client.setDealStage(DealStage.WON);
         clientRepository.save(client);
@@ -167,8 +185,7 @@ public class ProposalConversionService {
         tokenRegistry.put(shareToken, dto);
 
         // 5. Log Audit Event
-        Long agencyId = client.getAgency() != null ? client.getAgency().getId() : 1L;
-        auditEventService.logEvent(agencyId, "Client Portal Auto-Converter", "PROJECT_CONVERTED",
+        auditEventService.logEvent(agency.getId(), "Client Portal Auto-Converter", "PROJECT_CONVERTED",
                 "Proposal converted to Project #" + project.getId() + " (" + project.getTitle() + "). 50% Deposit Invoice generated: " + invNum);
 
         Map<String, Object> result = new HashMap<>();

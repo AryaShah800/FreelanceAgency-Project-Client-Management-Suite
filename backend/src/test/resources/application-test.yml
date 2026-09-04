@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:freelance-test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+  jwt:
+    secret: test-only-jwt-signing-secret-must-be-at-least-32-bytes-long
+    expiration-ms: 3600000
+  gemini:
+    api-key: demo_key
+    api-url: http://localhost:65535/not-used
+  razorpay:
+    key-id: ""
+    key-secret: ""
