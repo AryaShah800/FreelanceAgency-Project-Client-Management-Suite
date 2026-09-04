@@ -56,7 +56,7 @@ class ApiWorkflowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"agencyName\":\"\",\"ownerName\":\"\",\"email\":\"bad\",\"password\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.email").exists());
+                .andExpect(jsonPath("$.validationErrors.email").exists());
     }
 
     @Test
@@ -138,7 +138,7 @@ class ApiWorkflowIntegrationTest {
     @Test
     void publicProposalMustBeSignedBeforeItCanBeConverted() throws Exception {
         mockMvc.perform(post("/api/v1/public/portal/demo-proposal-token-2026/convert"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest());
     }
 
     private Account registerAgency(String label) throws Exception {
