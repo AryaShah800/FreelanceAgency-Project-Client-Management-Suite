@@ -18,6 +18,10 @@ class WebSocketService {
 
     this.client = new Client({
       webSocketFactory: () => new SockJS(socketUrl),
+      connectHeaders: (() => {
+        const token = localStorage.getItem('token');
+        return token ? { Authorization: `Bearer ${token}` } : {};
+      })(),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,

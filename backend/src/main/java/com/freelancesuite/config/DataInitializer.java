@@ -3,6 +3,7 @@ package com.freelancesuite.config;
 import com.freelancesuite.entity.*;
 import com.freelancesuite.entity.enums.*;
 import com.freelancesuite.repository.*;
+import com.freelancesuite.service.ProposalConversionService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,18 +22,22 @@ public class DataInitializer implements CommandLineRunner {
     private final ProjectRepository projects; private final TaskRepository tasks; private final TaskCommentRepository comments;
     private final TimeEntryRepository timeEntries; private final InvoiceRepository invoices; private final PaymentRepository payments;
     private final PasswordEncoder passwordEncoder;
+    private final ProposalConversionService proposalConversionService;
 
     public DataInitializer(AgencyRepository agencies, AppUserRepository users, ClientRepository clients, ProjectRepository projects,
                            TaskRepository tasks, TaskCommentRepository comments, TimeEntryRepository timeEntries,
-                           InvoiceRepository invoices, PaymentRepository payments, PasswordEncoder passwordEncoder) {
+                           InvoiceRepository invoices, PaymentRepository payments, PasswordEncoder passwordEncoder,
+                           ProposalConversionService proposalConversionService) {
         this.agencies = agencies; this.users = users; this.clients = clients; this.projects = projects; this.tasks = tasks;
         this.comments = comments; this.timeEntries = timeEntries; this.invoices = invoices; this.payments = payments; this.passwordEncoder = passwordEncoder;
+        this.proposalConversionService = proposalConversionService;
     }
 
     @Override @Transactional
     public void run(String... args) {
         if (users.count() > 0) return;
         Agency agency = agencies.save(Agency.builder().name("Apex Digital Solutions").gstin("27AAAAA0000A1Z5").subscriptionPlan("PRO").build());
+        proposalConversionService.bindDemoShareToken(agency.getId());
         String password = passwordEncoder.encode("password123");
         AppUser alex = user("Alex Mercer", "owner@agency.com", Role.OWNER, 150, agency, password);
         AppUser priya = user("Priya Shah", "priya@agency.com", Role.MEMBER, 95, agency, password);

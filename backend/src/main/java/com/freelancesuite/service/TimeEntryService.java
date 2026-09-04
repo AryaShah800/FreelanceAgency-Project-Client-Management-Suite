@@ -37,13 +37,16 @@ public class TimeEntryService {
 
     @Transactional
     public TimeEntryDto startTimer(Long taskId, UserPrincipal userPrincipal) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found"));
+        if (!task.getProject().getClient().getAgency().getId().equals(userPrincipal.getAgencyId())) {
+            throw new org.springframework.security.access.AccessDeniedException("You cannot track time for this task");
+        }
+
         Optional<TimeEntry> runningTimer = timeEntryRepository.findByUserIdAndEndTimeIsNull(userPrincipal.getId());
         if (runningTimer.isPresent()) {
             stopTimer(runningTimer.get().getId(), userPrincipal);
         }
-
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new IllegalArgumentException("Task not found"));
 
         AppUser user = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

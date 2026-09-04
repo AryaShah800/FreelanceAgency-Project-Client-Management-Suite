@@ -26,8 +26,10 @@ public class ExpenseController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ExpenseDto>> getExpenses(@PathVariable Long projectId) {
-        return ResponseEntity.ok(expenseService.getExpensesByProject(projectId));
+    public ResponseEntity<List<ExpenseDto>> getExpenses(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        return ResponseEntity.ok(expenseService.getExpensesByProject(projectId, userPrincipal.getAgencyId()));
     }
 
     @PostMapping
