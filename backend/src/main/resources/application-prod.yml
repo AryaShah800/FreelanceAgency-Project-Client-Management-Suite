@@ -1,7 +1,6 @@
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL}
-    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.postgresql.Driver}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
@@ -19,3 +18,8 @@ app:
   razorpay:
     key-id: ${RAZORPAY_KEY_ID}
     key-secret: ${RAZORPAY_KEY_SECRET}
+    # Separate secret Razorpay signs webhook payloads with (Dashboard > Webhooks).
+    # Deliberately not defaulted to app.razorpay.key-secret: keep it a distinct value.
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}

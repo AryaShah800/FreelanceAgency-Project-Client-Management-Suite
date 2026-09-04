@@ -13,6 +13,7 @@ public class PublicPortalProposalDto {
     private Boolean isSigned;
     private String signatureName;
     private LocalDateTime signedAt;
+    private String signatureHash;
     private Boolean isConvertedToProject;
     private Long createdProjectId;
     private String depositInvoiceNumber;
@@ -22,7 +23,7 @@ public class PublicPortalProposalDto {
 
     public PublicPortalProposalDto() {}
 
-    public PublicPortalProposalDto(String shareToken, String clientName, String projectScope, String deliverables, String paymentTerms, BigDecimal estimatedBudget, Boolean isSigned, String signatureName, LocalDateTime signedAt, Boolean isConvertedToProject, Long createdProjectId, String depositInvoiceNumber, BigDecimal depositAmount, LocalDateTime expiresAt, Boolean isRevoked) {
+    public PublicPortalProposalDto(String shareToken, String clientName, String projectScope, String deliverables, String paymentTerms, BigDecimal estimatedBudget, Boolean isSigned, String signatureName, LocalDateTime signedAt, String signatureHash, Boolean isConvertedToProject, Long createdProjectId, String depositInvoiceNumber, BigDecimal depositAmount, LocalDateTime expiresAt, Boolean isRevoked) {
         this.shareToken = shareToken;
         this.clientName = clientName;
         this.projectScope = projectScope;
@@ -32,6 +33,7 @@ public class PublicPortalProposalDto {
         this.isSigned = isSigned;
         this.signatureName = signatureName;
         this.signedAt = signedAt;
+        this.signatureHash = signatureHash;
         this.isConvertedToProject = isConvertedToProject;
         this.createdProjectId = createdProjectId;
         this.depositInvoiceNumber = depositInvoiceNumber;
@@ -52,6 +54,7 @@ public class PublicPortalProposalDto {
         private Boolean isSigned;
         private String signatureName;
         private LocalDateTime signedAt;
+        private String signatureHash;
         private Boolean isConvertedToProject;
         private Long createdProjectId;
         private String depositInvoiceNumber;
@@ -68,6 +71,7 @@ public class PublicPortalProposalDto {
         public PublicPortalProposalDtoBuilder isSigned(Boolean isSigned) { this.isSigned = isSigned; return this; }
         public PublicPortalProposalDtoBuilder signatureName(String signatureName) { this.signatureName = signatureName; return this; }
         public PublicPortalProposalDtoBuilder signedAt(LocalDateTime signedAt) { this.signedAt = signedAt; return this; }
+        public PublicPortalProposalDtoBuilder signatureHash(String signatureHash) { this.signatureHash = signatureHash; return this; }
         public PublicPortalProposalDtoBuilder isConvertedToProject(Boolean isConvertedToProject) { this.isConvertedToProject = isConvertedToProject; return this; }
         public PublicPortalProposalDtoBuilder createdProjectId(Long createdProjectId) { this.createdProjectId = createdProjectId; return this; }
         public PublicPortalProposalDtoBuilder depositInvoiceNumber(String depositInvoiceNumber) { this.depositInvoiceNumber = depositInvoiceNumber; return this; }
@@ -76,7 +80,7 @@ public class PublicPortalProposalDto {
         public PublicPortalProposalDtoBuilder isRevoked(Boolean isRevoked) { this.isRevoked = isRevoked; return this; }
 
         public PublicPortalProposalDto build() {
-            return new PublicPortalProposalDto(shareToken, clientName, projectScope, deliverables, paymentTerms, estimatedBudget, isSigned, signatureName, signedAt, isConvertedToProject, createdProjectId, depositInvoiceNumber, depositAmount, expiresAt, isRevoked);
+            return new PublicPortalProposalDto(shareToken, clientName, projectScope, deliverables, paymentTerms, estimatedBudget, isSigned, signatureName, signedAt, signatureHash, isConvertedToProject, createdProjectId, depositInvoiceNumber, depositAmount, expiresAt, isRevoked);
         }
     }
 
@@ -98,6 +102,8 @@ public class PublicPortalProposalDto {
     public void setSignatureName(String signatureName) { this.signatureName = signatureName; }
     public LocalDateTime getSignedAt() { return signedAt; }
     public void setSignedAt(LocalDateTime signedAt) { this.signedAt = signedAt; }
+    public String getSignatureHash() { return signatureHash; }
+    public void setSignatureHash(String signatureHash) { this.signatureHash = signatureHash; }
     public Boolean getIsConvertedToProject() { return isConvertedToProject; }
     public void setIsConvertedToProject(Boolean isConvertedToProject) { this.isConvertedToProject = isConvertedToProject; }
     public Long getCreatedProjectId() { return createdProjectId; }

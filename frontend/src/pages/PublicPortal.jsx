@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Sparkles, Building2, Check, PenTool, ShieldCheck, CreditCard, ArrowRight, FileText, CheckCircle2 } from 'lucide-react';
 
@@ -229,7 +229,16 @@ export default function PublicPortal() {
                 <div className="p-4 bg-forest-soft border border-forest/30 rounded space-y-1 text-forest text-[11px]">
                   <div className="font-display italic text-lg font-bold text-ink">{proposal.signatureName}</div>
                   <div>Digitally Signed: {new Date(proposal.signedAt).toLocaleString()}</div>
-                  <div className="text-ink-faint">Audit Hash: VERIFIED-TOKEN-SIGNATURE</div>
+                  <div className="text-ink-faint break-all">SHA-256: {proposal.signatureHash}</div>
+                  <a
+                    href={`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/public/portal/${token}/contract.pdf`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-forest font-semibold underline underline-offset-2 mt-1"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Download signed contract PDF
+                  </a>
                 </div>
               ) : (
                 <form onSubmit={handleSign} className="space-y-3 bg-paper p-4 rounded border border-border">
