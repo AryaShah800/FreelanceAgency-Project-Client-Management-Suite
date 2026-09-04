@@ -15,7 +15,7 @@ import java.awt.Color;
 @Component
 public class PdfGeneratorUtil {
 
-    public ByteArrayInputStream generateInvoicePdf(Invoice invoice) {
+    public static ByteArrayInputStream generateInvoicePdf(Invoice invoice) {
         Document document = new Document(PageSize.A4);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 

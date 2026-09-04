@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,15 +25,18 @@ public class TaskController {
 
     @GetMapping
     public ResponseEntity<List<TaskDto>> getAllAgencyTasks(@AuthenticationPrincipal UserPrincipal userPrincipal) {
-        return ResponseEntity.ok(taskService.getAllAgencyTasks(userPrincipal.getAgencyId()));
+        return ResponseEntity.ok(taskService.getTasksForUser(userPrincipal));
     }
 
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<TaskDto>> getTasksByProject(@PathVariable Long projectId) {
-        return ResponseEntity.ok(taskService.getTasksByProject(projectId));
+    public ResponseEntity<List<TaskDto>> getTasksByProject(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long projectId) {
+        return ResponseEntity.ok(taskService.getTasksByProject(projectId, userPrincipal));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
     public ResponseEntity<TaskDto> createTask(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody TaskDto dto) {
@@ -40,6 +44,7 @@ public class TaskController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
     public ResponseEntity<TaskDto> updateTask(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long id,
@@ -48,6 +53,7 @@ public class TaskController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<Void> deleteTask(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long id) {

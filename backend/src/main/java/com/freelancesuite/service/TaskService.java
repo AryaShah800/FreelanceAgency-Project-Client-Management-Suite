@@ -8,6 +8,7 @@ import com.freelancesuite.entity.enums.TaskStatus;
 import com.freelancesuite.repository.AppUserRepository;
 import com.freelancesuite.repository.ProjectRepository;
 import com.freelancesuite.repository.TaskRepository;
+import com.freelancesuite.security.UserPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -32,14 +33,41 @@ public class TaskService {
         this.messagingTemplate = messagingTemplate;
     }
 
-    public List<TaskDto> getTasksByProject(Long projectId) {
-        return taskRepository.findByProjectId(projectId)
-                .stream().map(this::mapToDto).collect(Collectors.toList());
+    public List<TaskDto> getTasksByProject(Long projectId, UserPrincipal userPrincipal) {
+        Project project = projectRepository.findByIdAndAgencyId(projectId, userPrincipal.getAgencyId())
+                .orElseThrow(() -> new IllegalArgumentException("Project not found"));
+
+        boolean isClient = userPrincipal != null && userPrincipal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
+
+        if (isClient && !project.getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail())) {
+            throw new org.springframework.security.access.AccessDeniedException("You cannot access this project's tasks");
+        }
+
+        List<Task> tasks = taskRepository.findByProjectId(projectId);
+        if (isClient) {
+            tasks = tasks.stream()
+                    .filter(t -> Boolean.TRUE.equals(t.getIsClientVisible()))
+                    .collect(Collectors.toList());
+        }
+
+        return tasks.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
-    public List<TaskDto> getAllAgencyTasks(Long agencyId) {
-        return taskRepository.findByAgencyId(agencyId)
-                .stream().map(this::mapToDto).collect(Collectors.toList());
+    public List<TaskDto> getTasksForUser(UserPrincipal userPrincipal) {
+        List<Task> tasks = taskRepository.findByAgencyId(userPrincipal.getAgencyId());
+
+        boolean isClient = userPrincipal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
+
+        if (isClient) {
+            tasks = tasks.stream()
+                    .filter(t -> t.getProject().getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail()))
+                    .filter(t -> Boolean.TRUE.equals(t.getIsClientVisible()))
+                    .collect(Collectors.toList());
+        }
+
+        return tasks.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
     @Transactional
@@ -49,7 +77,9 @@ public class TaskService {
 
         AppUser assignee = null;
         if (dto.getAssignedToId() != null) {
-            assignee = userRepository.findById(dto.getAssignedToId()).orElse(null);
+            assignee = userRepository.findById(dto.getAssignedToId())
+                    .filter(user -> user.getAgency().getId().equals(agencyId))
+                    .orElseThrow(() -> new IllegalArgumentException("Assignee not found in this agency"));
         }
 
         Task task = Task.builder()
@@ -60,6 +90,7 @@ public class TaskService {
                 .status(dto.getStatus() != null ? dto.getStatus() : TaskStatus.TODO)
                 .estimatedHours(dto.getEstimatedHours() != null ? dto.getEstimatedHours() : 0.0)
                 .actualHours(dto.getActualHours() != null ? dto.getActualHours() : 0.0)
+                .isClientVisible(dto.getIsClientVisible() != null ? dto.getIsClientVisible() : true)
                 .build();
 
         task = taskRepository.save(task);
@@ -90,8 +121,13 @@ public class TaskService {
         if (dto.getActualHours() != null) {
             task.setActualHours(dto.getActualHours());
         }
+        if (dto.getIsClientVisible() != null) {
+            task.setIsClientVisible(dto.getIsClientVisible());
+        }
         if (dto.getAssignedToId() != null) {
-            AppUser assignee = userRepository.findById(dto.getAssignedToId()).orElse(null);
+            AppUser assignee = userRepository.findById(dto.getAssignedToId())
+                    .filter(user -> user.getAgency().getId().equals(agencyId))
+                    .orElseThrow(() -> new IllegalArgumentException("Assignee not found in this agency"));
             task.setAssignedTo(assignee);
         }
 
@@ -129,6 +165,7 @@ public class TaskService {
                 .status(task.getStatus())
                 .estimatedHours(task.getEstimatedHours())
                 .actualHours(task.getActualHours())
+                .isClientVisible(task.getIsClientVisible())
                 .createdAt(task.getCreatedAt())
                 .build();
     }

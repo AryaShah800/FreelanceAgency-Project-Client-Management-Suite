@@ -32,11 +32,15 @@ public class Task {
 
     private Double estimatedHours = 0.0;
     private Double actualHours = 0.0;
+
+    @Column(nullable = false)
+    private Boolean isClientVisible = true;
+
     private LocalDateTime createdAt;
 
     public Task() {}
 
-    public Task(Long id, Project project, AppUser assignedTo, String title, String description, TaskStatus status, Double estimatedHours, Double actualHours, LocalDateTime createdAt) {
+    public Task(Long id, Project project, AppUser assignedTo, String title, String description, TaskStatus status, Double estimatedHours, Double actualHours, Boolean isClientVisible, LocalDateTime createdAt) {
         this.id = id;
         this.project = project;
         this.assignedTo = assignedTo;
@@ -45,6 +49,7 @@ public class Task {
         this.status = status != null ? status : TaskStatus.TODO;
         this.estimatedHours = estimatedHours != null ? estimatedHours : 0.0;
         this.actualHours = actualHours != null ? actualHours : 0.0;
+        this.isClientVisible = isClientVisible != null ? isClientVisible : true;
         this.createdAt = createdAt;
     }
 
@@ -66,6 +71,7 @@ public class Task {
         private TaskStatus status = TaskStatus.TODO;
         private Double estimatedHours = 0.0;
         private Double actualHours = 0.0;
+        private Boolean isClientVisible = true;
         private LocalDateTime createdAt;
 
         public TaskBuilder id(Long id) { this.id = id; return this; }
@@ -76,10 +82,11 @@ public class Task {
         public TaskBuilder status(TaskStatus status) { this.status = status; return this; }
         public TaskBuilder estimatedHours(Double estimatedHours) { this.estimatedHours = estimatedHours; return this; }
         public TaskBuilder actualHours(Double actualHours) { this.actualHours = actualHours; return this; }
+        public TaskBuilder isClientVisible(Boolean isClientVisible) { this.isClientVisible = isClientVisible; return this; }
         public TaskBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public Task build() {
-            return new Task(id, project, assignedTo, title, description, status, estimatedHours, actualHours, createdAt);
+            return new Task(id, project, assignedTo, title, description, status, estimatedHours, actualHours, isClientVisible, createdAt);
         }
     }
 
@@ -99,6 +106,8 @@ public class Task {
     public void setEstimatedHours(Double estimatedHours) { this.estimatedHours = estimatedHours; }
     public Double getActualHours() { return actualHours; }
     public void setActualHours(Double actualHours) { this.actualHours = actualHours; }
+    public Boolean getIsClientVisible() { return isClientVisible; }
+    public void setIsClientVisible(Boolean isClientVisible) { this.isClientVisible = isClientVisible; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

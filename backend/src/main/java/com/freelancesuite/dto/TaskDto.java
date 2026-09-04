@@ -21,11 +21,12 @@ public class TaskDto {
     private TaskStatus status;
     private Double estimatedHours;
     private Double actualHours;
+    private Boolean isClientVisible;
     private LocalDateTime createdAt;
 
     public TaskDto() {}
 
-    public TaskDto(Long id, Long projectId, Long assignedToId, String assignedToName, String title, String description, TaskStatus status, Double estimatedHours, Double actualHours, LocalDateTime createdAt) {
+    public TaskDto(Long id, Long projectId, Long assignedToId, String assignedToName, String title, String description, TaskStatus status, Double estimatedHours, Double actualHours, Boolean isClientVisible, LocalDateTime createdAt) {
         this.id = id;
         this.projectId = projectId;
         this.assignedToId = assignedToId;
@@ -35,6 +36,7 @@ public class TaskDto {
         this.status = status;
         this.estimatedHours = estimatedHours;
         this.actualHours = actualHours;
+        this.isClientVisible = isClientVisible;
         this.createdAt = createdAt;
     }
 
@@ -50,6 +52,7 @@ public class TaskDto {
         private TaskStatus status;
         private Double estimatedHours;
         private Double actualHours;
+        private Boolean isClientVisible;
         private LocalDateTime createdAt;
 
         public TaskDtoBuilder id(Long id) { this.id = id; return this; }
@@ -61,10 +64,11 @@ public class TaskDto {
         public TaskDtoBuilder status(TaskStatus status) { this.status = status; return this; }
         public TaskDtoBuilder estimatedHours(Double estimatedHours) { this.estimatedHours = estimatedHours; return this; }
         public TaskDtoBuilder actualHours(Double actualHours) { this.actualHours = actualHours; return this; }
+        public TaskDtoBuilder isClientVisible(Boolean isClientVisible) { this.isClientVisible = isClientVisible; return this; }
         public TaskDtoBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public TaskDto build() {
-            return new TaskDto(id, projectId, assignedToId, assignedToName, title, description, status, estimatedHours, actualHours, createdAt);
+            return new TaskDto(id, projectId, assignedToId, assignedToName, title, description, status, estimatedHours, actualHours, isClientVisible, createdAt);
         }
     }
 
@@ -86,6 +90,8 @@ public class TaskDto {
     public void setEstimatedHours(Double estimatedHours) { this.estimatedHours = estimatedHours; }
     public Double getActualHours() { return actualHours; }
     public void setActualHours(Double actualHours) { this.actualHours = actualHours; }
+    public Boolean getIsClientVisible() { return isClientVisible; }
+    public void setIsClientVisible(Boolean isClientVisible) { this.isClientVisible = isClientVisible; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,6 +36,7 @@ public class ProjectController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
     public ResponseEntity<ProjectDto> createProject(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody ProjectDto dto) {
@@ -42,6 +44,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
     public ResponseEntity<ProjectDto> updateProject(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long id,
@@ -50,6 +53,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<Void> deleteProject(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long id) {

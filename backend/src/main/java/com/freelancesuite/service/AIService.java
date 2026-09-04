@@ -1,19 +1,19 @@
 package com.freelancesuite.service;
 
 import com.freelancesuite.dto.AiContractRequest;
+import com.freelancesuite.dto.AiProposalResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
-
-import java.util.List;
 import java.util.Map;
 
 @Service
 public class AIService {
 
     private final WebClient.Builder webClientBuilder;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.gemini.api-key}")
     private String apiKey;
@@ -22,90 +22,63 @@ public class AIService {
     private String apiUrl;
 
     @Autowired
-    public AIService(WebClient.Builder webClientBuilder) {
+    public AIService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
         this.webClientBuilder = webClientBuilder;
+        this.objectMapper = objectMapper;
     }
 
-    public String generateProposalContract(AiContractRequest request) {
+    public AiProposalResponse generateProposalContract(AiContractRequest request) {
+        if ("demo_key".equals(apiKey) || apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("AI proposal drafting is not configured. Add GEMINI_API_KEY to enable it.");
+        }
         String prompt = String.format(
-            "Draft a professional Freelance Service Agreement / Proposal for client '%s'.\n" +
-            "Project Scope: %s\n" +
-            "Key Deliverables: %s\n" +
-            "Payment Terms: %s\n" +
-            "Format cleanly in markdown with sections for Scope, Deliverables, Payment Terms, and Legal Sign-off.",
+            "You are a proposal-writing assistant for a professional digital agency. Draft an editable client proposal, not a contract. " +
+            "Use only the supplied facts. Do not invent certifications, client facts, pricing, dates, guarantees, legal obligations, or signatures. " +
+            "Use concise, clear business language. Include review notes for items the agency must confirm.\n\n" +
+            "Client: %s\nProject scope: %s\nDeliverables: %s\nTimeline: %s\nBudget guidance: %s\nPayment terms: %s\n\n" +
+            "Return JSON only, matching this schema: {title:string, executiveSummary:string, sections:[{heading:string,content:string}], reviewNotes:[string]}. " +
+            "Sections must include: Objectives and scope; Deliverables; Timeline and milestones; Commercial terms; Assumptions and exclusions; Next steps. " +
+            "Every section content must be ready for a human to edit and send after review.",
             request.getClientName(),
             request.getProjectScope(),
             request.getDeliverables() != null ? request.getDeliverables() : "As specified in scope",
-            request.getPaymentTerms() != null ? request.getPaymentTerms() : "50% upfront, 50% upon completion"
+            request.getTimeline() != null ? request.getTimeline() : "To be confirmed",
+            request.getBudgetGuidance() != null ? request.getBudgetGuidance() : "To be confirmed",
+            request.getPaymentTerms() != null ? request.getPaymentTerms() : "To be confirmed"
         );
-
-        if ("demo_key".equals(apiKey) || apiKey == null || apiKey.isBlank()) {
-            return generateMockProposal(request);
-        }
 
         try {
             Map<String, Object> requestBody = Map.of(
-                "contents", List.of(
-                    Map.of("parts", List.of(Map.of("text", prompt)))
-                )
+                "contents", java.util.List.of(Map.of("parts", java.util.List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of("responseMimeType", "application/json")
             );
 
-            Mono<Map> responseMono = webClientBuilder.build()
+            Map response = webClientBuilder.build()
                 .post()
-                .uri(apiUrl + "?key=" + apiKey)
+                .uri(apiUrl)
+                .header("x-goog-api-key", apiKey)
                 .bodyValue(requestBody)
                 .retrieve()
-                .bodyToMono(Map.class);
-
-            Map response = responseMono.block();
+                .bodyToMono(Map.class)
+                .block();
             if (response != null && response.containsKey("candidates")) {
-                List candidates = (List) response.get("candidates");
+                java.util.List candidates = (java.util.List) response.get("candidates");
                 if (!candidates.isEmpty()) {
                     Map firstCandidate = (Map) candidates.get(0);
                     Map content = (Map) firstCandidate.get("content");
-                    List parts = (List) content.get("parts");
+                    java.util.List parts = (java.util.List) content.get("parts");
                     Map firstPart = (Map) parts.get(0);
-                    return (String) firstPart.get("text");
+                    AiProposalResponse proposal = objectMapper.readValue((String) firstPart.get("text"), AiProposalResponse.class);
+                    if (proposal.getSections() == null || proposal.getSections().isEmpty()) {
+                        throw new IllegalStateException("The AI response did not contain proposal sections");
+                    }
+                    proposal.setGeneratedAt(java.time.LocalDateTime.now());
+                    return proposal;
                 }
             }
         } catch (Exception ex) {
-            return generateMockProposal(request);
+            throw new IllegalStateException("AI proposal drafting is temporarily unavailable. Please try again shortly.", ex);
         }
-
-        return generateMockProposal(request);
-    }
-
-    private String generateMockProposal(AiContractRequest request) {
-        return String.format("""
-            # FREELANCE SERVICE AGREEMENT & PROPOSAL
-            
-            **Client:** %s  
-            **Date:** %s  
-            
-            ---
-            
-            ## 1. Project Scope
-            %s
-            
-            ## 2. Key Deliverables
-            %s
-            
-            ## 3. Payment & Commercial Terms
-            %s
-            
-            ## 4. Intellectual Property & Confidentiality
-            Upon receipt of full payment, all intellectual property rights for custom code and designs developed for this project are transferred exclusively to %s.
-            
-            ---
-            **Client Signature:** ____________________  
-            **Agency Representative:** ____________________
-            """,
-            request.getClientName(),
-            java.time.LocalDate.now(),
-            request.getProjectScope(),
-            request.getDeliverables() != null ? request.getDeliverables() : "1. Design Mockups\n2. Web Application Code\n3. Deployment Setup",
-            request.getPaymentTerms() != null ? request.getPaymentTerms() : "50% Advance Upon Signing, 50% Upon Final Milestone Acceptance",
-            request.getClientName()
-        );
+        throw new IllegalStateException("The AI provider returned no proposal content");
     }
 }

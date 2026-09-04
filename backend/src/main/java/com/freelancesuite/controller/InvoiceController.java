@@ -11,6 +11,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayInputStream;
@@ -40,13 +41,23 @@ public class InvoiceController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
     public ResponseEntity<InvoiceDto> createInvoice(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody InvoiceDto dto) {
         return ResponseEntity.ok(invoiceService.createInvoice(dto, userPrincipal.getAgencyId()));
     }
 
+    @PostMapping("/generate-from-time/{projectId}")
+    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
+    public ResponseEntity<InvoiceDto> generateFromUnbilledTime(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long projectId) {
+        return ResponseEntity.ok(invoiceService.generateFromUnbilledTime(projectId, userPrincipal.getAgencyId()));
+    }
+
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<InvoiceDto> updateInvoiceStatus(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long id,
@@ -55,8 +66,10 @@ public class InvoiceController {
     }
 
     @GetMapping("/{id}/pdf")
-    public ResponseEntity<InputStreamResource> downloadInvoicePdf(@PathVariable Long id) {
-        ByteArrayInputStream pdfStream = invoiceService.generatePdfStream(id);
+    public ResponseEntity<InputStreamResource> downloadInvoicePdf(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        ByteArrayInputStream pdfStream = invoiceService.generatePdfStream(id, userPrincipal);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Disposition", "inline; filename=invoice-" + id + ".pdf");

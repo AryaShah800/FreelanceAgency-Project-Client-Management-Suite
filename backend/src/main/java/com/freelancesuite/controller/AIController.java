@@ -1,16 +1,17 @@
 package com.freelancesuite.controller;
 
 import com.freelancesuite.dto.AiContractRequest;
+import com.freelancesuite.dto.AiProposalResponse;
 import com.freelancesuite.service.AIService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/ai")
+@PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
 public class AIController {
 
     private final AIService aiService;
@@ -20,9 +21,8 @@ public class AIController {
         this.aiService = aiService;
     }
 
-    @PostMapping("/generate-contract")
-    public ResponseEntity<Map<String, String>> generateContract(@Valid @RequestBody AiContractRequest request) {
-        String result = aiService.generateProposalContract(request);
-        return ResponseEntity.ok(Map.of("contract", result));
+    @PostMapping("/ai-generator")
+    public ResponseEntity<AiProposalResponse> generateContract(@Valid @RequestBody AiContractRequest request) {
+        return ResponseEntity.ok(aiService.generateProposalContract(request));
     }
 }
