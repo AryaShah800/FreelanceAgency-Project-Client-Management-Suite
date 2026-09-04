@@ -13,9 +13,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   Flame,
-  ShieldAlert,
-  TrendingUp,
-  Activity
+  Activity,
+  History,
+  ExternalLink
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -53,6 +53,7 @@ export default function Dashboard() {
   const [recentProjects, setRecentProjects] = useState([]);
   const [recentInvoices, setRecentInvoices] = useState([]);
   const [clientTasks, setClientTasks] = useState([]);
+  const [auditEvents, setAuditEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -69,8 +70,12 @@ export default function Dashboard() {
 
       let clientsCount = 0;
       if (!isClient) {
-        const clientsRes = await api.get('/clients');
+        const [clientsRes, auditRes] = await Promise.all([
+          api.get('/clients'),
+          api.get('/audit-events'),
+        ]);
         clientsCount = clientsRes.data.length;
+        setAuditEvents(auditRes.data.slice(0, 6));
       }
 
       const totalRevenue = invoicesRes.data
@@ -99,7 +104,6 @@ export default function Dashboard() {
   const progressPercentage = clientTasks.length > 0 ? Math.round((completedTasks / clientTasks.length) * 100) : 0;
   const blockedTasks = clientTasks.filter((t) => t.status === 'REVIEW');
 
-  // Budget calculations
   const totalBudget = recentProjects.reduce((sum, p) => sum + (p.budget || 0), 0);
   const totalLoggedHours = clientTasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
   const estConsumedValue = totalLoggedHours * 150;
@@ -123,11 +127,22 @@ export default function Dashboard() {
             <p className="text-ink-muted text-xs mt-1">
               {isClient
                 ? 'Real-time budget burn-down, milestone delivery velocity, and active blocker alerts.'
-                : 'Traffic-light project health scores, resource allocation, and incoming revenue forecasts.'}
+                : 'Traffic-light project health scores, resource allocation, and live activity audit feed.'}
             </p>
           </div>
 
-          <div>
+          <div className="flex items-center gap-3">
+            {!isClient && (
+              <a
+                href="/portal/share/demo-proposal-token-2026"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 bg-paper hover:bg-ink/5 border border-border text-ink text-xs font-semibold px-4 py-2.5 rounded-full transition-all"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-brass-dark" />
+                Demo Public Portal Share
+              </a>
+            )}
             {!isClient ? (
               <Link
                 to="/ai-generator"
@@ -167,7 +182,6 @@ export default function Dashboard() {
         {/* Client Budget Burn-Down & Delivery Velocity Section */}
         {isClient ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Budget Burn-Down Chart Component */}
             <div className="lg:col-span-7 bg-surface p-6 rounded border border-border shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-border">
                 <h3 className="font-display font-semibold text-base text-ink flex items-center gap-2">
@@ -185,12 +199,10 @@ export default function Dashboard() {
                   <span className="text-ink-muted">Total Contract Budget: <strong className="text-ink">₹{totalBudget.toLocaleString()}</strong></span>
                 </div>
 
-                {/* Progress bar container */}
                 <div className="w-full bg-paper h-4 rounded border border-border overflow-hidden p-0.5 flex">
                   <div
                     className="bg-gradient-to-r from-brass to-brass-dark h-full rounded transition-all duration-500"
                     style={{ width: `${budgetConsumedPercent}%` }}
-                    title={`Budget Burned: ${budgetConsumedPercent}%`}
                   ></div>
                 </div>
 
@@ -202,7 +214,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Segmented Milestone Progress Tracker */}
             <div className="lg:col-span-5 bg-surface p-6 rounded border border-border shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-border">
                 <h3 className="font-display font-semibold text-base text-ink flex items-center gap-2">
@@ -241,39 +252,70 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          /* Agency Command Center Health Scores */
-          <div className="bg-surface p-6 rounded border border-border shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-border">
-              <h3 className="font-display font-semibold text-base text-ink flex items-center gap-2">
-                <Activity className="w-4 h-4 text-brass-dark" />
-                Traffic-Light Project Health Scores
-              </h3>
-              <span className="text-xs font-mono text-ink-muted">Global Operations Scope</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Health Scores */}
+            <div className="lg:col-span-7 bg-surface p-6 rounded border border-border shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-border">
+                <h3 className="font-display font-semibold text-base text-ink flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-brass-dark" />
+                  Traffic-Light Project Health Scores
+                </h3>
+                <span className="text-xs font-mono text-ink-muted">Global Operations Scope</span>
+              </div>
+
+              <div className="space-y-3">
+                {recentProjects.map((proj) => {
+                  const projTasks = clientTasks.filter((t) => t.projectId === proj.id);
+                  const projDone = projTasks.filter((t) => t.status === 'DONE').length;
+                  const healthStatus = projTasks.length > 0 && projDone / projTasks.length >= 0.5 ? 'GREEN' : 'YELLOW';
+
+                  return (
+                    <div key={proj.id} className="p-4 rounded border border-border bg-paper flex items-center justify-between">
+                      <div>
+                        <h4 className="font-display font-bold text-sm text-ink">{proj.title}</h4>
+                        <span className="text-xs text-ink-muted font-mono">Client: {proj.clientName}</span>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <span className={`font-mono text-[9px] px-2 py-0.5 rounded font-bold uppercase inline-block ${
+                          healthStatus === 'GREEN' ? 'bg-forest-soft text-forest border border-forest/20' : 'bg-brass-soft text-brass-dark border border-brass/20'
+                        }`}>
+                          {healthStatus === 'GREEN' ? '● ON TRACK' : '▲ MONITORING'}
+                        </span>
+                        <div className="font-mono text-xs font-bold text-ink">₹{proj.budget?.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {recentProjects.map((proj) => {
-                const projTasks = clientTasks.filter((t) => t.projectId === proj.id);
-                const projDone = projTasks.filter((t) => t.status === 'DONE').length;
-                const healthStatus = projTasks.length > 0 && projDone / projTasks.length >= 0.5 ? 'GREEN' : 'YELLOW';
+            {/* Audit & Activity Log Feed Timeline */}
+            <div className="lg:col-span-5 bg-surface p-6 rounded border border-border shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-border">
+                <h3 className="font-display font-semibold text-base text-ink flex items-center gap-2">
+                  <History className="w-4 h-4 text-brass-dark" />
+                  Client & Audit Activity Feed
+                </h3>
+                <span className="font-mono text-[10px] text-ink-muted">REAL-TIME LOG</span>
+              </div>
 
-                return (
-                  <div key={proj.id} className="p-4 rounded border border-border bg-paper space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-display font-bold text-sm text-ink">{proj.title}</h4>
-                      <span className={`font-mono text-[9px] px-2 py-0.5 rounded font-bold uppercase ${
-                        healthStatus === 'GREEN' ? 'bg-forest-soft text-forest border border-forest/20' : 'bg-brass-soft text-brass-dark border border-brass/20'
-                      }`}>
-                        {healthStatus === 'GREEN' ? '● ON TRACK' : '▲ MONITORING'}
-                      </span>
+              {auditEvents.length === 0 ? (
+                <p className="text-xs text-ink-muted py-6 text-center">No activity logged yet.</p>
+              ) : (
+                <div className="space-y-3 font-mono text-xs">
+                  {auditEvents.map((evt) => (
+                    <div key={evt.id} className="p-3 rounded border border-border/80 bg-paper space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-brass-dark">
+                        <span>{evt.actor}</span>
+                        <span className="text-[10px] text-ink-muted">
+                          {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-ink text-[11px] font-sans">{evt.details}</p>
                     </div>
-                    <div className="text-xs text-ink-muted font-mono flex justify-between">
-                      <span>Client: {proj.clientName}</span>
-                      <span>Budget: ₹{proj.budget?.toLocaleString()}</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -302,83 +344,6 @@ export default function Dashboard() {
             sublabel="Assigned deliverables"
             accent="neutral"
           />
-        </div>
-
-        {/* Ledger Activity & Feeds */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Projects Ledger */}
-          <div className="bg-surface p-5 rounded border border-border shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-border">
-              <h3 className="font-display font-semibold text-sm text-ink flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-brass-dark" />
-                Project Ledger
-              </h3>
-              <Link to="/projects" className="text-xs text-brass-dark font-semibold hover:underline">
-                View Ledger
-              </Link>
-            </div>
-
-            {recentProjects.length === 0 ? (
-              <p className="text-ink-muted text-xs py-8 text-center">No projects in current ledger.</p>
-            ) : (
-              <div className="divide-y divide-border/60">
-                {recentProjects.map((project) => (
-                  <div key={project.id} className="py-3 flex items-center justify-between text-xs">
-                    <div>
-                      <h4 className="font-semibold text-ink">{project.title}</h4>
-                      <p className="text-ink-muted text-[11px] mt-0.5">Client: {project.clientName}</p>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <div className="font-mono font-bold text-ink">₹{project.budget?.toLocaleString()}</div>
-                      <div className="text-[10px] text-ink-muted font-mono flex items-center justify-end gap-1">
-                        <Clock className="w-3 h-3" />
-                        {project.deadline || 'No deadline'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Invoices Feed */}
-          <div className="bg-surface p-5 rounded border border-border shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-border">
-              <h3 className="font-display font-semibold text-sm text-ink flex items-center gap-2">
-                <FileText className="w-4 h-4 text-brass-dark" />
-                GST Invoices Feed
-              </h3>
-              <Link to="/invoices" className="text-xs text-brass-dark font-semibold hover:underline">
-                View Invoices
-              </Link>
-            </div>
-
-            {recentInvoices.length === 0 ? (
-              <p className="text-ink-muted text-xs py-8 text-center">No invoice records generated yet.</p>
-            ) : (
-              <div className="divide-y divide-border/60">
-                {recentInvoices.map((inv) => (
-                  <div key={inv.id} className="py-3 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-mono text-brass-dark font-bold">{inv.invoiceNumber}</span>
-                      <p className="text-ink-muted text-[11px] mt-0.5">{inv.clientName}</p>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <div className="font-mono font-bold text-ink">₹{inv.totalAmount?.toLocaleString()}</div>
-                      <div>
-                        <span className={`font-mono text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                          inv.status === 'PAID' ? 'bg-forest-soft text-forest' :
-                          inv.status === 'SENT' ? 'bg-brass-soft text-brass-dark' : 'bg-rust-soft text-rust'
-                        }`}>
-                          {inv.status}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </main>
     </div>

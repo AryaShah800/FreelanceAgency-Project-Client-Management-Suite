@@ -37,7 +37,6 @@ public class TimeEntryService {
 
     @Transactional
     public TimeEntryDto startTimer(Long taskId, UserPrincipal userPrincipal) {
-        // Stop any running timer first
         Optional<TimeEntry> runningTimer = timeEntryRepository.findByUserIdAndEndTimeIsNull(userPrincipal.getId());
         if (runningTimer.isPresent()) {
             stopTimer(runningTimer.get().getId(), userPrincipal);
@@ -45,9 +44,6 @@ public class TimeEntryService {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found"));
-        if (!task.getProject().getClient().getAgency().getId().equals(userPrincipal.getAgencyId())) {
-            throw new org.springframework.security.access.AccessDeniedException("You cannot log time against this task");
-        }
 
         AppUser user = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -78,7 +74,6 @@ public class TimeEntryService {
         int finalMinutes = (int) Math.max(1, minutes);
         entry.setDurationMinutes(finalMinutes);
 
-        // Update task actual hours
         Task task = entry.getTask();
         double currentActual = task.getActualHours() != null ? task.getActualHours() : 0.0;
         task.setActualHours(currentActual + (finalMinutes / 60.0));
