@@ -15,7 +15,9 @@ const TASK_STATUSES = [
 
 export default function Tasks() {
   const { user } = useAuth();
-  const isClient = user?.role === 'CLIENT';
+  const role = String(user?.role || '').toUpperCase();
+  const isClient = role === 'CLIENT';
+  const isOwner = role === 'OWNER';
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -58,11 +60,11 @@ export default function Tasks() {
     setPendingOfflineQueue(savedQueue);
 
     // STOMP WebSocket Live Updates Subscription
-    wsService.connect(() => {
-      wsService.subscribe('/topic/tasks', (updatedTask) => {
-        fetchTasks();
+    if (isOwner) {
+      wsService.connect(() => {
+        wsService.subscribe('/topic/tasks', () => fetchTasks());
       });
-    });
+    }
   };
 
   const handleOnline = async () => {
@@ -238,7 +240,7 @@ export default function Tasks() {
     <div className="flex-1 flex flex-col min-h-screen bg-paper">
       <Navbar
         title={isClient ? "Project Milestones & Deliverables" : "Task Board & PWA Offline Sync"}
-        onQuickAction={isClient ? null : () => setShowModal(true)}
+        onQuickAction={isOwner ? () => setShowModal(true) : null}
       />
 
       <main className="flex-1 p-6 space-y-6">
@@ -301,7 +303,7 @@ export default function Tasks() {
                       <div key={task.id} className={`bg-surface border p-4 rounded transition-all relative group ${isCurrentTimer ? 'border-brass shadow-sm' : 'border-border hover:border-brass/40'}`}>
                         <div className="flex items-start justify-between gap-1">
                           <div className="space-y-1">
-                            {!isClient && (
+                            {isOwner && (
                               <div className="flex items-center gap-1.5 text-[10px] font-mono">
                                 {task.isClientVisible ? (
                                   <span className="text-forest bg-forest-soft px-1.5 py-0.5 rounded flex items-center gap-1 font-semibold">
@@ -316,7 +318,7 @@ export default function Tasks() {
                             )}
                             <h4 className="font-display font-semibold text-sm text-ink leading-tight mt-1">{task.title}</h4>
                           </div>
-                          {!isClient && (
+                          {isOwner && (
                             <button
                               onClick={() => handleDelete(task.id)}
                               className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-rust transition-opacity p-0.5"
@@ -415,7 +417,7 @@ export default function Tasks() {
       )}
 
       {/* Modal */}
-      {showModal && (
+      {showModal && isOwner && (
         <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border p-6 rounded shadow-lg w-full max-w-md">
             <h3 className="font-display font-bold text-lg text-ink mb-4">Create Task</h3>

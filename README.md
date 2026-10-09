@@ -2,19 +2,19 @@
 
 A full-stack agency management suite: CRM pipeline, project/task tracking with
 live comments, GST-compliant invoicing with a Razorpay checkout, AI-drafted
-proposals, and a token-based public client portal for reviewing, e-signing,
-and auto-converting proposals into active projects.
+proposals, and a token-based public client portal for reviewing proposals,
+recording acceptance, and creating projects with milestone invoices.
 
-Built as a final-year project, deliberately on a Spring Boot backend (rather
-than another Node/Express app) to demonstrate a second stack.
+Designed for freelance agencies to manage client relationships, delivery,
+proposals, and billing in one workspace.
 
 ## Stack
 
-**Backend** — Java 17, Spring Boot 3, Spring Security (JWT, stateless), Spring
+**Backend** — Java 21, Spring Boot 4, Spring Security (JWT, stateless), Spring
 Data JPA, PostgreSQL (H2 in-memory for local dev), STOMP over WebSocket
-(SockJS) for live comments, OpenPDF for invoice/contract PDF generation.
+(SockJS) for live comments, OpenPDF for invoice and proposal-acceptance PDFs.
 
-**Frontend** — React 18 + Vite, Tailwind CSS, shadcn/ui, `@stomp/stompjs` for
+**Frontend** — React 18 + Vite 7, Tailwind CSS 4, `@stomp/stompjs` for
 the live comment feed, Razorpay Checkout.js.
 
 ## Features
@@ -32,40 +32,51 @@ the live comment feed, Razorpay Checkout.js.
 - **AI proposal drafting** — Gemini-drafted proposal sections from a scope,
   budget, and timeline brief (agency-side, authenticated).
 - **Public client portal** — a tokenized, unauthenticated link where a client
-  can review a proposal, digitally sign it (producing a SHA-256 signature
-  hash and a locked, downloadable contract PDF snapshot), and one-click
-  convert the signed proposal into an active project with an auto-generated
-  50% deposit invoice.
-- **Audit trail** — every sensitive action (proposal viewed/signed, project
+  can review a proposal, record acceptance with their typed name and email,
+  and convert it into a project with invoices matching the agreed payment
+  milestones.
+- **Audit trail** — every sensitive action (proposal viewed/accepted, project
   converted, etc.) is logged per-agency.
 
 ## Getting started
 
 ### Prerequisites
 
-- Java 17+, Maven
-- Node 18+
+- Java 21+, Maven
+- Node.js 20.19+ or 22.12+
 - (Optional) A Google AI Studio key, Razorpay test keys — the app runs fine
   without either; those features just report "not configured" until you add
   them.
 
 ### Backend
 
+#### Windows PowerShell
+
 ```bash
 cd backend
-cp .env.example .env
-# Open .env and set JWT_SECRET at minimum, e.g.:
-#   openssl rand -hex 32
-mvn spring-boot:run
+Copy-Item .env.example .env
+# Set JWT_SECRET in backend/.env to a private value of at least 32 characters.
+.\run-dev.ps1
 ```
 
-The backend runs on `http://localhost:8080` with an in-memory H2 database by
-default (`SPRING_PROFILES_ACTIVE=dev`). On first run it seeds a demo agency,
+The Windows launcher reads `backend/.env` and always uses disposable in-memory
+H2, even if the file contains staging database settings.
+
+#### macOS or Linux
+
+```bash
+cd backend
+export JWT_SECRET="$(openssl rand -hex 32)"
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+The backend runs on `http://localhost:8080` with an in-memory H2 database
+when run with the `dev` profile. On first run it seeds a demo agency,
 users, clients, projects, and a signable demo proposal.
 
-**Demo login:** `owner@agency.com` / `password123` (see
-`DataInitializer.java` for the full seeded cast, including client-side
-logins).
+**Demo login (local development only):** `owner@agency.com` / `password123`.
+The dev profile creates sample accounts; never use these credentials or seeded
+data in a production deployment.
 
 **H2 console:** `http://localhost:8080/h2-console` (JDBC URL
 `jdbc:h2:mem:freelancedb`, user `sa`, no password).
@@ -84,35 +95,44 @@ Or use `run_app.bat` (Windows) to launch both at once.
 
 ### Environment variables
 
-See `backend/.env.example` for the full list. Nothing is defaulted to a real
-secret anymore — `JWT_SECRET` is required for the app to start at all; the
-rest are optional and simply disable the corresponding feature until set.
+See `backend/.env.example` for local development variables and
+`DEPLOYMENT.md` for production requirements. Production requires PostgreSQL,
+HTTPS frontend origins, an owner bootstrap secret, and a configured email sender
+for account invitations and recovery. Payment and AI integrations are optional.
 
 | Variable | Required? | Purpose |
 |---|---|---|
 | `JWT_SECRET` | **Yes** | Signs/validates auth tokens. Generate with `openssl rand -hex 32`. |
 | `GEMINI_API_KEY` | No | Enables AI proposal drafting. |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | No | Enables the Razorpay checkout flow. |
-| `RAZORPAY_WEBHOOK_SECRET` | No | Enables the `payment.captured` webhook — set this once you add the webhook URL in the Razorpay Dashboard. |
-| `CORS_ALLOWED_ORIGINS` | No (defaults to `http://localhost:5173`) | Comma-separated list of origins allowed to call the API and open a WebSocket. |
+| `RAZORPAY_WEBHOOK_SECRET` | Required when either Razorpay key is set | Separate webhook signing secret used to verify captured payments. |
+| `CORS_ALLOWED_ORIGINS` | Yes in production | Exact frontend origins allowed to call the API and open a WebSocket. |
 
 ### Testing the Razorpay webhook locally
 
-Add `http://localhost:8080/api/v1/public/payments/webhook` as a webhook URL
-in the Razorpay Dashboard (test mode), subscribed to `payment.captured`, and
-copy the signing secret it gives you into `RAZORPAY_WEBHOOK_SECRET`. For
-local development without a public URL, use the Razorpay CLI or a tunnel
-(e.g. `ngrok http 8080`) to forward events to your machine.
+For staging, add your backend's public HTTPS URL ending in
+`/api/v1/public/payments/webhook` in the Razorpay Dashboard (test mode), and
+subscribe to `payment.captured`. Choose a strong webhook secret in Razorpay and
+set the exact same value in `RAZORPAY_WEBHOOK_SECRET`; this is separate from
+`RAZORPAY_KEY_SECRET`. For local development, forward port 8080 with the
+Razorpay CLI or a public tunnel (e.g. `ngrok http 8080`) and use the tunnel's
+HTTPS URL with the same webhook path. Razorpay cannot call `localhost` directly.
 
-## Running tests
+## Tests and release checks
 
 ```bash
 cd backend
 mvn test
+
+cd ../frontend
+npm ci
+npm audit --audit-level=high
+npm run build
 ```
 
-Covers the shared HMAC signature verification (used by both the client-side
-payment confirmation and the webhook) and the proposal sign/convert flow.
+The GitHub Actions workflow runs the backend test suite, checks frontend
+dependencies for high severity advisories, and builds the production bundle on
+pushes and pull requests to `main` or `master`.
 
 ## Architecture notes
 
@@ -126,16 +146,16 @@ payment confirmation and the webhook) and the proposal sign/convert flow.
   client-triggered `/verify` endpoint and the `/webhook` endpoint, with
   idempotent payment recording so a retried webhook or a webhook + client
   confirmation racing each other can't double-record a payment.
-- **E-signature**: proposals are persisted (`Proposal` entity), not held
-  in-memory — signing computes a SHA-256 hash over the proposal content,
-  signer name, and timestamp, and generates a locked PDF snapshot at that
-  moment, so what's downloadable later can never drift from what was agreed.
+- **Acceptance record**: proposals are persisted (`Proposal` entity). The
+  acceptance hash includes the proposal content, signer name, contact email,
+  and timestamp. A PDF record is generated at acceptance time.
 
-## Known limitations
+## Launch scope and limitations
 
-This is a portfolio/learning project, not a production system. Notably:
-- The public portal's e-signature flow is a real, persisted, hashed
-  signature — but it is **not** a legally-binding e-signature product (no
-  identity verification, no tamper-evident signed PDF format like PAdES).
+Review these product limitations before selling or onboarding an agency:
+- The public portal records a typed name, contact email, timestamp, and a
+  content-bound SHA-256 audit hash. It does not verify signer identity or
+  provide a legally certified signature workflow. Do not market it as a
+  legally binding e-signature service without jurisdiction-specific review.
 - Single-database, single-region; no queueing/retry layer for the Gemini or
   Razorpay API calls beyond what the HTTP client itself does.

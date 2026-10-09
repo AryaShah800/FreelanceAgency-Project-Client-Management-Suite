@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     List<Expense> findByProjectId(Long projectId);
+
+    long countByProjectId(Long projectId);
 }

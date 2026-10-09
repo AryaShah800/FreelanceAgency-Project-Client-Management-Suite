@@ -58,6 +58,21 @@ public class PdfGeneratorUtil {
             cellRight.addElement(new Paragraph("Payable To:", boldFont));
             cellRight.addElement(new Paragraph(invoice.getProject().getClient().getAgency().getName(), regularFont));
             cellRight.addElement(new Paragraph("GSTIN: " + (invoice.getProject().getClient().getAgency().getGstin() != null ? invoice.getProject().getClient().getAgency().getGstin() : "N/A"), regularFont));
+            if (invoice.getProject().getClient().getAgency().getPan() != null && !invoice.getProject().getClient().getAgency().getPan().isBlank()) {
+                cellRight.addElement(new Paragraph("PAN: " + invoice.getProject().getClient().getAgency().getPan(), regularFont));
+            }
+            if (invoice.getProject().getClient().getAgency().getRegisteredAddress() != null && !invoice.getProject().getClient().getAgency().getRegisteredAddress().isBlank()) {
+                cellRight.addElement(new Paragraph("Address: " + invoice.getProject().getClient().getAgency().getRegisteredAddress(), regularFont));
+            }
+            if (invoice.getProject().getClient().getAgency().getBankName() != null && !invoice.getProject().getClient().getAgency().getBankName().isBlank()) {
+                cellRight.addElement(new Paragraph("Bank: " + invoice.getProject().getClient().getAgency().getBankName(), regularFont));
+            }
+            if (invoice.getProject().getClient().getAgency().getBankAccountNumber() != null && !invoice.getProject().getClient().getAgency().getBankAccountNumber().isBlank()) {
+                cellRight.addElement(new Paragraph("Account: " + invoice.getProject().getClient().getAgency().getBankAccountNumber(), regularFont));
+            }
+            if (invoice.getProject().getClient().getAgency().getBankIfsc() != null && !invoice.getProject().getClient().getAgency().getBankIfsc().isBlank()) {
+                cellRight.addElement(new Paragraph("IFSC: " + invoice.getProject().getClient().getAgency().getBankIfsc(), regularFont));
+            }
             cellRight.addElement(new Paragraph("Date: " + invoice.getCreatedAt().toLocalDate().toString(), regularFont));
             cellRight.addElement(new Paragraph("Due Date: " + invoice.getDueDate().toString(), regularFont));
 
@@ -126,12 +141,11 @@ public class PdfGeneratorUtil {
     }
 
     /**
-     * Generates a locked snapshot of a signed proposal, including the computed
-     * signature hash, as a "downloadable proof of signature" PDF. Called once at
-     * sign time; the resulting bytes are stored on the Proposal so what the
-     * client downloads later can never drift from what they actually signed.
+     * Generates a fixed PDF record of the proposal and the typed acceptance
+     * details and hash. It does not verify signer identity or establish that the
+     * acceptance is legally binding. Called once when acceptance is recorded.
      */
-    public static ByteArrayInputStream generateContractPdf(Proposal proposal) {
+    public static ByteArrayInputStream generateAcceptanceRecordPdf(Proposal proposal) {
         Document document = new Document(PageSize.A4);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm");
@@ -146,12 +160,27 @@ public class PdfGeneratorUtil {
             Font regularFont = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
             Font monoFont = FontFactory.getFont(FontFactory.COURIER, 8, Color.DARK_GRAY);
 
-            document.add(new Paragraph("SERVICES AGREEMENT PROPOSAL", titleFont));
-            document.add(new Paragraph("Share token: " + proposal.getShareToken(), subFont));
+            document.add(new Paragraph("PROPOSAL ACCEPTANCE RECORD", titleFont));
             document.add(Chunk.NEWLINE);
 
             document.add(new Paragraph("Client: " + proposal.getClientName(), boldFont));
             document.add(Chunk.NEWLINE);
+
+            if (proposal.getDocumentHtml() != null && !proposal.getDocumentHtml().isBlank()) {
+                document.add(new Paragraph("Agreed proposal content", boldFont));
+                String plainProposal = proposal.getDocumentHtml()
+                        .replaceAll("(?is)<script\\b[^>]*>.*?</script\\s*>|<style\\b[^>]*>.*?</style\\s*>", " ")
+                        .replaceAll("(?s)<[^>]+>", " ")
+                        .replace("&nbsp;", " ")
+                        .replace("&amp;", "&")
+                        .replace("&lt;", "<")
+                        .replace("&gt;", ">")
+                        .replace("&quot;", "\"")
+                        .replaceAll("\\s+", " ")
+                        .trim();
+                document.add(new Paragraph(plainProposal, regularFont));
+                document.add(Chunk.NEWLINE);
+            }
 
             document.add(new Paragraph("1. Project Scope", boldFont));
             document.add(new Paragraph(nullToEmpty(proposal.getProjectScope()), regularFont));
@@ -166,17 +195,17 @@ public class PdfGeneratorUtil {
             document.add(new Paragraph(nullToEmpty(proposal.getPaymentTerms()), regularFont));
             document.add(Chunk.NEWLINE);
 
-            document.add(new Paragraph("4. Digital Signature", boldFont));
-            document.add(new Paragraph("Signed by: " + proposal.getSignatureName(), regularFont));
-            document.add(new Paragraph("Signed at: " +
+            document.add(new Paragraph("4. Acceptance Record", boldFont));
+            document.add(new Paragraph("Accepted by: " + proposal.getSignatureName(), regularFont));
+            document.add(new Paragraph("Recorded at: " +
                     (proposal.getSignedAt() != null ? proposal.getSignedAt().format(formatter) : "-"), regularFont));
             document.add(Chunk.NEWLINE);
-            document.add(new Paragraph("Verification hash (SHA-256 of proposal content + signer + timestamp):", subFont));
+            document.add(new Paragraph("Verification hash (SHA-256 of proposal content, signer, contact email, and timestamp):", subFont));
             document.add(new Paragraph(nullToEmpty(proposal.getSignatureHash()), monoFont));
 
             document.close();
         } catch (DocumentException ex) {
-            ex.printStackTrace();
+            throw new IllegalStateException("Could not create proposal acceptance record PDF", ex);
         }
 
         return new ByteArrayInputStream(out.toByteArray());

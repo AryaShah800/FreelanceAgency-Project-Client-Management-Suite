@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend-build:
-    name: Spring Boot Backend Build & Compile Test
+    name: Spring Boot Backend Tests & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -22,10 +22,56 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build with Maven
-        run: |
-          cd backend
-          mvn clean compile
+      - name: Test and package with Maven
+        run: mvn -B -ntp verify
+        working-directory: backend
+
+  postgres16-migration:
+    name: PostgreSQL 16 Migration and Hibernate Validation
+    runs-on: ubuntu-latest
+    needs: backend-build
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: freelance_migration_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d freelance_migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      POSTGRES_MIGRATION_TEST: 'true'
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/freelance_migration_test?sslmode=disable
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: test-only-password
+      JWT_SECRET: ci-only-signing-secret-with-at-least-32-bytes
+      APP_FRONTEND_BASE_URL: https://agency.example.test
+      CORS_ALLOWED_ORIGINS: https://agency.example.test
+      RESEND_API_KEY: re_ci_placeholder
+      RESEND_FROM: Agency Test <no-reply@example.test>
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Apply Flyway migration and validate JPA mappings on PostgreSQL 16
+        run: mvn -B -ntp -Dtest=Postgres16MigrationIntegrationTest test
+        working-directory: backend
 
   frontend-build:
     name: React Vite Frontend Build Check
@@ -42,12 +88,25 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Dependencies
+      - name: Set non-production metadata for CI build
         run: |
-          cd frontend
-          npm ci
+          echo "VITE_PUBLIC_SITE_URL=https://agency.example.test" >> "$GITHUB_ENV"
+          echo "VITE_LEGAL_OPERATOR=Example Test Operator" >> "$GITHUB_ENV"
+          echo "VITE_LEGAL_JURISDICTION=Example Test Jurisdiction" >> "$GITHUB_ENV"
+          echo "VITE_SUPPORT_EMAIL=support@example.test" >> "$GITHUB_ENV"
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Run frontend unit tests
+        run: npm test
+        working-directory: frontend
+
+      - name: Audit Dependencies
+        run: npm audit --audit-level=high
+        working-directory: frontend
 
       - name: Build Production Bundle
-        run: |
-          cd frontend
-          npm run build
+        run: npm run build
+        working-directory: frontend

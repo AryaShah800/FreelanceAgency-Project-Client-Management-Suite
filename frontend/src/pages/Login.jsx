@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Building2, Lock, Mail, ArrowRight } from 'lucide-react';
+import { trackEvent } from '../services/analytics';
 
 export default function Login() {
-  const [email, setEmail] = useState('owner@agency.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, loading } = useAuth();
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function Login() {
     setError('');
     try {
       await login(email, password);
+      trackEvent('Login completed');
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid credentials');
@@ -33,7 +35,7 @@ export default function Login() {
             <Building2 className="w-7 h-7 text-surface" />
           </div>
           <h2 className="font-display text-2xl font-bold text-ink tracking-tight">Ledger Portal Sign-In</h2>
-          <p className="text-ink-muted text-xs mt-1.5 font-sans">Manage projects, contracts, and GST invoicing</p>
+          <p className="text-ink-muted text-xs mt-1.5 font-sans">Manage projects, clients, proposals, and GST invoicing</p>
         </div>
 
         {error && (
@@ -83,13 +85,18 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-xs text-ink-muted">
-          Don't have an agency portal account?{' '}
-          <Link to="/register" className="text-brass-dark font-semibold hover:underline">
-            Register Agency
-          </Link>
+        <div className="mt-6 flex flex-col gap-2 text-center text-xs text-ink-muted">
+          <Link to="/forgot-password" className="text-brass-dark font-semibold hover:underline">Forgot password?</Link>
+          <Link to="/verify-email" className="text-brass-dark font-semibold hover:underline">Need an email verification link?</Link>
+          <Link to="/setup" className="mt-2 text-ink-faint hover:text-ink">First time setting up this installation?</Link>
+          <span>Agency accounts are invitation-only.</span>
         </div>
       </div>
+      <footer className="absolute bottom-4 left-0 right-0 z-10 flex justify-center gap-5 px-4 text-xs text-ink-muted">
+        <Link to="/privacy" className="underline">Privacy</Link>
+        <Link to="/terms" className="underline">Terms</Link>
+        <Link to="/contact" className="underline">Contact</Link>
+      </footer>
     </div>
   );
 }

@@ -25,7 +25,7 @@ export default function TaskCommentDrawer({ task, onClose }) {
   }, [task]);
 
   const subscribeToLiveComments = () => {
-    if (!task || !task.projectId) return;
+    if (!task || !task.projectId || user?.role !== 'OWNER') return;
     const topic = `/topic/project/${task.projectId}/comments`;
     wsService.connect(() => {
       wsService.subscribe(topic, (incomingComment) => {

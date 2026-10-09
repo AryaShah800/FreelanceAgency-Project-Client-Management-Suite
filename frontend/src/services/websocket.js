@@ -14,7 +14,7 @@ class WebSocketService {
       return;
     }
 
-    const socketUrl = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
+    const socketUrl = import.meta.env.VITE_WS_URL || getDefaultSocketUrl();
 
     this.client = new Client({
       webSocketFactory: () => new SockJS(socketUrl),
@@ -78,6 +78,19 @@ class WebSocketService {
       this.connected = false;
     }
   }
+}
+
+function getDefaultSocketUrl() {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  if (apiBaseUrl && /^https?:\/\//i.test(apiBaseUrl)) {
+    return `${new URL(apiBaseUrl).origin}/ws`;
+  }
+
+  if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+    return `${window.location.protocol}//${window.location.hostname}:8080/ws`;
+  }
+
+  return `${window.location.origin}/ws`;
 }
 
 export const wsService = new WebSocketService();

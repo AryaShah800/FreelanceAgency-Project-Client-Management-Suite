@@ -30,6 +30,7 @@ public class TimeEntryService {
         this.userRepository = userRepository;
     }
 
+    @Transactional(readOnly = true)
     public Optional<TimeEntryDto> getActiveTimer(UserPrincipal userPrincipal) {
         return timeEntryRepository.findByUserIdAndEndTimeIsNull(userPrincipal.getId())
                 .map(this::mapToDto);
@@ -41,6 +42,13 @@ public class TimeEntryService {
                 .orElseThrow(() -> new IllegalArgumentException("Task not found"));
         if (!task.getProject().getClient().getAgency().getId().equals(userPrincipal.getAgencyId())) {
             throw new org.springframework.security.access.AccessDeniedException("You cannot track time for this task");
+        }
+        if (userPrincipal.getRole() == com.freelancesuite.entity.enums.Role.MEMBER
+                && (task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(userPrincipal.getId()))) {
+            throw new org.springframework.security.access.AccessDeniedException("You can only track time on your assigned tasks.");
+        }
+        if (com.freelancesuite.entity.enums.TaskStatus.DONE.equals(task.getStatus())) {
+            throw new IllegalArgumentException("Cannot track time on a completed task");
         }
 
         Optional<TimeEntry> runningTimer = timeEntryRepository.findByUserIdAndEndTimeIsNull(userPrincipal.getId());
@@ -74,7 +82,7 @@ public class TimeEntryService {
         LocalDateTime now = LocalDateTime.now();
         entry.setEndTime(now);
         long minutes = Duration.between(entry.getStartTime(), now).toMinutes();
-        int finalMinutes = (int) Math.max(1, minutes);
+        int finalMinutes = (int) Math.max(1, Math.min(minutes, 1440)); // Max 24 hours
         entry.setDurationMinutes(finalMinutes);
 
         Task task = entry.getTask();

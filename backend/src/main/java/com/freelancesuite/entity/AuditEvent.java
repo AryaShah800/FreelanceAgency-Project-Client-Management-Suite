@@ -19,7 +19,7 @@ public class AuditEvent {
     private String actor; // e.g. "Client (Sarah Jenkins)", "System Auto-Converter", "Alex Mercer"
 
     @Column(nullable = false)
-    private String action; // e.g. "PROPOSAL_VIEWED", "CONTRACT_SIGNED", "DEPOSIT_PAID", "PROJECT_CONVERTED"
+    private String action; // e.g. "PROPOSAL_VIEWED", "PROPOSAL_ACCEPTED", "DEPOSIT_PAID", "PROJECT_CONVERTED"
 
     @Column(columnDefinition = "TEXT")
     private String details;

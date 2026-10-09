@@ -14,6 +14,7 @@ const STAGES = [
 export default function Clients() {
   const [clients, setClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [invitingClientId, setInvitingClientId] = useState(null);
   const [newClient, setNewClient] = useState({
     companyName: '',
     contactPerson: '',
@@ -64,6 +65,18 @@ export default function Clients() {
       fetchClients();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleInviteToPortal = async (client) => {
+    setInvitingClientId(client.id);
+    try {
+      await api.post(`/clients/${client.id}/portal-invitation`);
+      window.alert(`Client portal invitation sent to ${client.email}.`);
+    } catch (err) {
+      window.alert(err.response?.data?.message || 'Could not send the client portal invitation.');
+    } finally {
+      setInvitingClientId(null);
     }
   };
 
@@ -118,6 +131,14 @@ export default function Clients() {
                         )}
 
                         <div className="pt-2 mt-3 border-t border-border/40">
+                          <button
+                            type="button"
+                            disabled={invitingClientId === client.id}
+                            onClick={() => handleInviteToPortal(client)}
+                            className="w-full mb-2 rounded border border-brass/40 px-2 py-1.5 text-[10px] font-semibold text-brass hover:bg-brass/5 disabled:opacity-50"
+                          >
+                            {invitingClientId === client.id ? 'Sending invitation…' : 'Invite to client portal'}
+                          </button>
                           <select
                             value={client.dealStage}
                             onChange={(e) => handleStageChange(client.id, e.target.value)}

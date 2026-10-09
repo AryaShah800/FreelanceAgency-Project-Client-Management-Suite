@@ -31,6 +31,15 @@ public class AppUser {
 
     private Double hourlyRate = 0.0;
 
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(nullable = false)
+    private boolean enabled = true;
+
+    @Column(nullable = false)
+    private Integer tokenVersion = 0;
+
     private LocalDateTime createdAt;
 
     public AppUser() {}
@@ -95,4 +104,10 @@ public class AppUser {
     public void setHourlyRate(Double hourlyRate) { this.hourlyRate = hourlyRate; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Integer getTokenVersion() { return tokenVersion == null ? 0 : tokenVersion; }
+    public void setTokenVersion(Integer tokenVersion) { this.tokenVersion = tokenVersion; }
 }

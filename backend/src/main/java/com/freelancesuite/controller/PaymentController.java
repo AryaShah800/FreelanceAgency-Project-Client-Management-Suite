@@ -26,6 +26,7 @@ public class PaymentController {
     }
 
     @PostMapping("/razorpay/create-order")
+    @PreAuthorize("hasRole('CLIENT')")
     public ResponseEntity<Map<String, Object>> createOrder(
             @RequestParam Long invoiceId,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -33,6 +34,7 @@ public class PaymentController {
     }
 
     @PostMapping("/razorpay/verify")
+    @PreAuthorize("hasRole('CLIENT')")
     public ResponseEntity<Payment> verifyPayment(
             @Valid @RequestBody PaymentVerificationRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {

@@ -16,7 +16,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final String[] allowedOrigins;
     private final JwtChannelInterceptor jwtChannelInterceptor;
 
-    public WebSocketConfig(@Value("${app.cors.allowed-origins:http://localhost:5173}") String allowedOrigins,
+    public WebSocketConfig(@Value("${app.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000}") String allowedOrigins,
                             JwtChannelInterceptor jwtChannelInterceptor) {
         this.allowedOrigins = java.util.Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim).filter(origin -> !origin.isEmpty()).toArray(String[]::new);
@@ -32,13 +32,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(allowedOrigins)
+                .setAllowedOriginPatterns(allowedOrigins)
                 .withSockJS();
     }
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        // Enforces JWT auth on CONNECT and per-project authorization on SUBSCRIBE.
+        // Enforces JWT auth on CONNECT, rejects client SEND frames, and applies
+        // per-project authorization on SUBSCRIBE.
         // See JwtChannelInterceptor for details on why /ws/** being permitAll at
         // the HTTP layer (needed for the SockJS handshake) isn't enough on its own.
         registration.interceptors(jwtChannelInterceptor);

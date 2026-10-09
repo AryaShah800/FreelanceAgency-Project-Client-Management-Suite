@@ -1,9 +1,10 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:freelancedb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL}
-    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.h2.Driver}
-    username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    # Development always uses disposable H2; never inherit a Neon URL in this profile.
+    url: jdbc:h2:mem:freelancedb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
   h2:
     console:
       enabled: true
@@ -11,23 +12,28 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+  flyway:
+    enabled: false
     show-sql: false
 
 app:
+  email:
+    delivery-mode: console
+    frontend-base-url: http://localhost:5173
+  bootstrap:
+    secret: ${OWNER_BOOTSTRAP_SECRET:}
   jwt:
-    # No fallback default on purpose: a checked-in secret is a forgeable-token
-    # risk the moment this repo is public. Copy backend/.env.example to
-    # backend/.env and set your own value (e.g. `openssl rand -hex 32`).
+    # Set a private secret in backend/.env, even for local development.
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   gemini:
     # No fallback default on purpose: a checked-in API key is billable-abuse
     # risk the moment this repo is public. Set GEMINI_API_KEY in backend/.env.
     api-key: ${GEMINI_API_KEY:}
-    api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent}
+    api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent}
   razorpay:
     key-id: ${RAZORPAY_KEY_ID:}
     key-secret: ${RAZORPAY_KEY_SECRET:}
     webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000}

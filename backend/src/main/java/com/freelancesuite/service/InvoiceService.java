@@ -7,6 +7,8 @@ import com.freelancesuite.entity.enums.InvoiceStatus;
 import com.freelancesuite.repository.*;
 import com.freelancesuite.security.UserPrincipal;
 import com.freelancesuite.util.PdfGeneratorUtil;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,10 +17,13 @@ import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class InvoiceService {
@@ -27,6 +32,13 @@ public class InvoiceService {
     private final ProjectRepository projectRepository;
     private final TimeEntryRepository timeEntryRepository;
 
+    private final Cache<Long, PdfRateWindow> pdfRequestWindows = Caffeine.newBuilder()
+            .maximumSize(100_000)
+            .expireAfterAccess(Duration.ofMinutes(2))
+            .build();
+    private static final int MAX_PDF_REQUESTS = 10;
+    private static final long PDF_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+
     @Autowired
     public InvoiceService(InvoiceRepository invoiceRepository, ProjectRepository projectRepository, TimeEntryRepository timeEntryRepository) {
         this.invoiceRepository = invoiceRepository;
@@ -34,21 +46,23 @@ public class InvoiceService {
         this.timeEntryRepository = timeEntryRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<InvoiceDto> getInvoicesForUser(UserPrincipal userPrincipal) {
-        List<Invoice> invoices = invoiceRepository.findByAgencyId(userPrincipal.getAgencyId());
-
+        List<Invoice> invoices;
         boolean isClient = userPrincipal.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
 
         if (isClient) {
-            invoices = invoices.stream()
-                    .filter(inv -> inv.getProject().getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail()))
-                    .collect(Collectors.toList());
+            invoices = invoiceRepository.findByAgencyIdAndClientEmailIgnoreCase(
+                    userPrincipal.getAgencyId(), userPrincipal.getEmail());
+        } else {
+            invoices = invoiceRepository.findByAgencyId(userPrincipal.getAgencyId());
         }
 
         return invoices.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public InvoiceDto getInvoiceById(Long id, UserPrincipal userPrincipal) {
         return mapToDto(requireAccessibleInvoice(id, userPrincipal));
     }
@@ -81,7 +95,7 @@ public class InvoiceService {
 
         Invoice invoice = Invoice.builder()
                 .project(project)
-                .invoiceNumber("INV-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 5).toUpperCase())
+                .invoiceNumber("INV-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .subtotal(subtotal)
                 .cgst(tax.cgst)
                 .sgst(tax.sgst)
@@ -136,7 +150,7 @@ public class InvoiceService {
 
         Invoice invoice = Invoice.builder()
                 .project(project)
-                .invoiceNumber("INV-TIME-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase())
+                .invoiceNumber("INV-TIME-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .subtotal(subtotal)
                 .cgst(tax.cgst)
                 .sgst(tax.sgst)
@@ -177,9 +191,28 @@ public class InvoiceService {
         return mapToDto(invoice);
     }
 
+    @Transactional(readOnly = true)
     public ByteArrayInputStream generatePdfStream(Long id, UserPrincipal userPrincipal) {
-        return PdfGeneratorUtil.generateInvoicePdf(requireAccessibleInvoice(id, userPrincipal));
+        Invoice invoice = requireAccessibleInvoice(id, userPrincipal);
+        enforcePdfRateLimit(userPrincipal.getId());
+        return PdfGeneratorUtil.generateInvoicePdf(invoice);
     }
+
+    void enforcePdfRateLimit(Long userId) {
+        long now = System.currentTimeMillis();
+        pdfRequestWindows.asMap().compute(userId, (key, current) -> {
+            if (current == null || now - current.windowStartedAtMillis() >= PDF_RATE_LIMIT_WINDOW_MS) {
+                return new PdfRateWindow(1, now);
+            }
+            if (current.count() >= MAX_PDF_REQUESTS) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "PDF generation rate limit exceeded. Please try again later.");
+            }
+            return new PdfRateWindow(current.count() + 1, current.windowStartedAtMillis());
+        });
+    }
+
+    private record PdfRateWindow(int count, long windowStartedAtMillis) { }
 
     private Invoice requireAccessibleInvoice(Long id, UserPrincipal userPrincipal) {
         Invoice invoice = invoiceRepository.findById(id)

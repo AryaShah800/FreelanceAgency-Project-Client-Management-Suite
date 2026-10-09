@@ -7,19 +7,35 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
+  flyway:
+    enabled: true
+    validate-on-migrate: true
+    clean-disabled: true
 
 app:
+  ai:
+    daily-generation-limit: ${AI_DAILY_GENERATION_LIMIT:50}
+    max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2048}
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   gemini:
-    api-key: ${GEMINI_API_KEY}
+    # AI drafting falls back to the built-in template when this is blank.
+    api-key: ${GEMINI_API_KEY:}
     api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent}
   razorpay:
-    key-id: ${RAZORPAY_KEY_ID}
-    key-secret: ${RAZORPAY_KEY_SECRET}
+    # Checkout is disabled unless both values are configured.
+    key-id: ${RAZORPAY_KEY_ID:}
+    key-secret: ${RAZORPAY_KEY_SECRET:}
     # Separate secret Razorpay signs webhook payloads with (Dashboard > Webhooks).
     # Deliberately not defaulted to app.razorpay.key-secret: keep it a distinct value.
-    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  email:
+    delivery-mode: resend
+    resend-api-key: ${RESEND_API_KEY}
+    resend-from: ${RESEND_FROM}
+    frontend-base-url: ${APP_FRONTEND_BASE_URL}
+  bootstrap:
+    secret: ${OWNER_BOOTSTRAP_SECRET:}

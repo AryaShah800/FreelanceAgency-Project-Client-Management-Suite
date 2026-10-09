@@ -4,6 +4,7 @@ import com.freelancesuite.dto.ClientDto;
 import com.freelancesuite.entity.enums.DealStage;
 import com.freelancesuite.security.UserPrincipal;
 import com.freelancesuite.service.ClientService;
+import com.freelancesuite.service.AccountLifecycleService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,14 +16,16 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/clients")
-@PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
+@PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
 public class ClientController {
 
     private final ClientService clientService;
+    private final AccountLifecycleService accountLifecycleService;
 
     @Autowired
-    public ClientController(ClientService clientService) {
+    public ClientController(ClientService clientService, AccountLifecycleService accountLifecycleService) {
         this.clientService = clientService;
+        this.accountLifecycleService = accountLifecycleService;
     }
 
     @GetMapping
@@ -60,6 +63,13 @@ public class ClientController {
             @PathVariable Long id,
             @RequestParam DealStage stage) {
         return ResponseEntity.ok(clientService.updateDealStage(id, stage, userPrincipal.getAgencyId()));
+    }
+
+    @PostMapping("/{id}/portal-invitation")
+    public ResponseEntity<Void> inviteToPortal(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                               @PathVariable Long id) {
+        accountLifecycleService.inviteClient(id, userPrincipal);
+        return ResponseEntity.accepted().build();
     }
 
     @DeleteMapping("/{id}")

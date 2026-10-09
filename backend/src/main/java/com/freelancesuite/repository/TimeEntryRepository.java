@@ -18,4 +18,9 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, Long> {
 
     @Query("SELECT te FROM TimeEntry te WHERE te.task.project.id = :projectId AND (te.isBilled = false OR te.isBilled IS NULL) AND te.endTime IS NOT NULL")
     List<TimeEntry> findUnbilledTimeEntriesByProject(@Param("projectId") Long projectId);
+
+    List<TimeEntry> findByTaskProjectId(Long projectId);
+
+    long countByTaskProjectId(Long projectId);
+    long countByTaskId(Long taskId);
 }

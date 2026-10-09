@@ -14,6 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/tasks")
+@PreAuthorize("hasAnyRole('OWNER', 'MEMBER', 'CLIENT')")
 public class TaskController {
 
     private final TaskService taskService;
@@ -36,7 +37,7 @@ public class TaskController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<TaskDto> createTask(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody TaskDto dto) {
@@ -49,7 +50,7 @@ public class TaskController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long id,
             @Valid @RequestBody TaskDto dto) {
-        return ResponseEntity.ok(taskService.updateTask(id, dto, userPrincipal.getAgencyId()));
+        return ResponseEntity.ok(taskService.updateTask(id, dto, userPrincipal));
     }
 
     @DeleteMapping("/{id}")

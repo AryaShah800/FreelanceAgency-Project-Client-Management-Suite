@@ -28,6 +28,19 @@ public class Client {
 
     private String gstin;
 
+    /** Permanent Account Number (Income Tax). */
+    private String pan;
+
+    /** Registered office address for contract party identification. */
+    @Column(columnDefinition = "TEXT")
+    private String registeredAddress;
+
+    /**
+     * Two-digit GST state code for Place of Supply determination.
+     * Derived from GSTIN prefix when available; can be set independently.
+     */
+    private String stateCode;
+
     @Enumerated(EnumType.STRING)
     private DealStage dealStage = DealStage.LEAD;
 
@@ -35,7 +48,9 @@ public class Client {
 
     public Client() {}
 
-    public Client(Long id, Agency agency, String companyName, String contactPerson, String email, String phone, String gstin, DealStage dealStage, LocalDateTime createdAt) {
+    public Client(Long id, Agency agency, String companyName, String contactPerson, String email,
+                  String phone, String gstin, String pan, String registeredAddress, String stateCode,
+                  DealStage dealStage, LocalDateTime createdAt) {
         this.id = id;
         this.agency = agency;
         this.companyName = companyName;
@@ -43,6 +58,9 @@ public class Client {
         this.email = email;
         this.phone = phone;
         this.gstin = gstin;
+        this.pan = pan;
+        this.registeredAddress = registeredAddress;
+        this.stateCode = stateCode;
         this.dealStage = dealStage != null ? dealStage : DealStage.LEAD;
         this.createdAt = createdAt;
     }
@@ -64,6 +82,9 @@ public class Client {
         private String email;
         private String phone;
         private String gstin;
+        private String pan;
+        private String registeredAddress;
+        private String stateCode;
         private DealStage dealStage = DealStage.LEAD;
         private LocalDateTime createdAt;
 
@@ -74,11 +95,15 @@ public class Client {
         public ClientBuilder email(String email) { this.email = email; return this; }
         public ClientBuilder phone(String phone) { this.phone = phone; return this; }
         public ClientBuilder gstin(String gstin) { this.gstin = gstin; return this; }
+        public ClientBuilder pan(String pan) { this.pan = pan; return this; }
+        public ClientBuilder registeredAddress(String registeredAddress) { this.registeredAddress = registeredAddress; return this; }
+        public ClientBuilder stateCode(String stateCode) { this.stateCode = stateCode; return this; }
         public ClientBuilder dealStage(DealStage dealStage) { this.dealStage = dealStage; return this; }
         public ClientBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public Client build() {
-            return new Client(id, agency, companyName, contactPerson, email, phone, gstin, dealStage, createdAt);
+            return new Client(id, agency, companyName, contactPerson, email, phone, gstin,
+                    pan, registeredAddress, stateCode, dealStage, createdAt);
         }
     }
 
@@ -96,6 +121,12 @@ public class Client {
     public void setPhone(String phone) { this.phone = phone; }
     public String getGstin() { return gstin; }
     public void setGstin(String gstin) { this.gstin = gstin; }
+    public String getPan() { return pan; }
+    public void setPan(String pan) { this.pan = pan; }
+    public String getRegisteredAddress() { return registeredAddress; }
+    public void setRegisteredAddress(String registeredAddress) { this.registeredAddress = registeredAddress; }
+    public String getStateCode() { return stateCode; }
+    public void setStateCode(String stateCode) { this.stateCode = stateCode; }
     public DealStage getDealStage() { return dealStage; }
     public void setDealStage(DealStage dealStage) { this.dealStage = dealStage; }
     public LocalDateTime getCreatedAt() { return createdAt; }

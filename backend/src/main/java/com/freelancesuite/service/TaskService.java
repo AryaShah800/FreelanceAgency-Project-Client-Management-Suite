@@ -7,7 +7,9 @@ import com.freelancesuite.entity.Task;
 import com.freelancesuite.entity.enums.TaskStatus;
 import com.freelancesuite.repository.AppUserRepository;
 import com.freelancesuite.repository.ProjectRepository;
+import com.freelancesuite.repository.TaskCommentRepository;
 import com.freelancesuite.repository.TaskRepository;
+import com.freelancesuite.repository.TimeEntryRepository;
 import com.freelancesuite.security.UserPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -24,15 +26,20 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final AppUserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TaskCommentRepository taskCommentRepository;
+    private final TimeEntryRepository timeEntryRepository;
 
     @Autowired
-    public TaskService(TaskRepository taskRepository, ProjectRepository projectRepository, AppUserRepository userRepository, SimpMessagingTemplate messagingTemplate) {
+    public TaskService(TaskRepository taskRepository, ProjectRepository projectRepository, AppUserRepository userRepository, SimpMessagingTemplate messagingTemplate, TaskCommentRepository taskCommentRepository, TimeEntryRepository timeEntryRepository) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.messagingTemplate = messagingTemplate;
+        this.taskCommentRepository = taskCommentRepository;
+        this.timeEntryRepository = timeEntryRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<TaskDto> getTasksByProject(Long projectId, UserPrincipal userPrincipal) {
         Project project = projectRepository.findByIdAndAgencyId(projectId, userPrincipal.getAgencyId())
                 .orElseThrow(() -> new IllegalArgumentException("Project not found"));
@@ -44,7 +51,13 @@ public class TaskService {
             throw new org.springframework.security.access.AccessDeniedException("You cannot access this project's tasks");
         }
 
-        List<Task> tasks = taskRepository.findByProjectId(projectId);
+        if (userPrincipal.getRole() == com.freelancesuite.entity.enums.Role.MEMBER
+                && !taskRepository.existsByProjectIdAndAssignedToId(projectId, userPrincipal.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("This project has no work assigned to you.");
+        }
+        List<Task> tasks = userPrincipal.getRole() == com.freelancesuite.entity.enums.Role.MEMBER
+                ? taskRepository.findByProjectIdAndAssignedToId(projectId, userPrincipal.getId())
+                : taskRepository.findByProjectId(projectId);
         if (isClient) {
             tasks = tasks.stream()
                     .filter(t -> Boolean.TRUE.equals(t.getIsClientVisible()))
@@ -54,17 +67,19 @@ public class TaskService {
         return tasks.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<TaskDto> getTasksForUser(UserPrincipal userPrincipal) {
-        List<Task> tasks = taskRepository.findByAgencyId(userPrincipal.getAgencyId());
-
+        List<Task> tasks;
         boolean isClient = userPrincipal.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
 
         if (isClient) {
-            tasks = tasks.stream()
-                    .filter(t -> t.getProject().getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail()))
-                    .filter(t -> Boolean.TRUE.equals(t.getIsClientVisible()))
-                    .collect(Collectors.toList());
+            tasks = taskRepository.findClientVisibleTasksByAgencyIdAndClientEmailIgnoreCase(
+                    userPrincipal.getAgencyId(), userPrincipal.getEmail());
+        } else if (userPrincipal.getRole() == com.freelancesuite.entity.enums.Role.MEMBER) {
+            tasks = taskRepository.findByAssignedToId(userPrincipal.getId());
+        } else {
+            tasks = taskRepository.findByAgencyId(userPrincipal.getAgencyId());
         }
 
         return tasks.stream().map(this::mapToDto).collect(Collectors.toList());
@@ -129,6 +144,8 @@ public class TaskService {
                     .filter(user -> user.getAgency().getId().equals(agencyId))
                     .orElseThrow(() -> new IllegalArgumentException("Assignee not found in this agency"));
             task.setAssignedTo(assignee);
+        } else {
+            task.setAssignedTo(null);
         }
 
         task = taskRepository.save(task);
@@ -136,6 +153,27 @@ public class TaskService {
 
         messagingTemplate.convertAndSend("/topic/project/" + task.getProject().getId(), result);
 
+        return result;
+    }
+
+    @Transactional
+    public TaskDto updateTask(Long id, TaskDto dto, UserPrincipal userPrincipal) {
+        if (userPrincipal.getRole() == com.freelancesuite.entity.enums.Role.OWNER) {
+            return updateTask(id, dto, userPrincipal.getAgencyId());
+        }
+        if (userPrincipal.getRole() != com.freelancesuite.entity.enums.Role.MEMBER) {
+            throw new org.springframework.security.access.AccessDeniedException("You cannot update this task.");
+        }
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found"));
+        if (!task.getProject().getClient().getAgency().getId().equals(userPrincipal.getAgencyId())
+                || task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(userPrincipal.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("This task is not assigned to you.");
+        }
+        if (dto.getStatus() != null) task.setStatus(dto.getStatus());
+        task = taskRepository.save(task);
+        TaskDto result = mapToDto(task);
+        messagingTemplate.convertAndSend("/topic/project/" + task.getProject().getId(), result);
         return result;
     }
 
@@ -149,6 +187,19 @@ public class TaskService {
         }
 
         Long projectId = task.getProject().getId();
+
+        long commentCount = taskCommentRepository.countByTaskId(id);
+        if (commentCount > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot delete task with " + commentCount + " existing comment(s). Delete them first.");
+        }
+
+        long timeEntryCount = timeEntryRepository.countByTaskId(id);
+        if (timeEntryCount > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot delete task with " + timeEntryCount + " existing time entry(s). Delete them first.");
+        }
+
         taskRepository.delete(task);
 
         messagingTemplate.convertAndSend("/topic/project/" + projectId, "DELETE:" + id);

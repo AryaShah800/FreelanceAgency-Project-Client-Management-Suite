@@ -19,6 +19,7 @@ public class Payment {
     @Column(nullable = false)
     private BigDecimal amount;
 
+    @Column(unique = true)
     private String razorpayPaymentId;
     private String razorpayOrderId;
     private LocalDateTime paidAt;

@@ -6,6 +6,7 @@ import {
   Briefcase, 
   CheckSquare, 
   FileText, 
+  FileCheck2,
   Sparkles, 
   LogOut,
   Building2
@@ -14,7 +15,8 @@ import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const isClient = user?.role === 'CLIENT';
+  const role = user?.role?.replace(/^ROLE_/, '').toUpperCase();
+  const isClient = role === 'CLIENT';
 
   const ownerNavItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -23,6 +25,22 @@ export default function Sidebar() {
     { name: 'Task Board', path: '/tasks', icon: CheckSquare },
     { name: 'GST Invoices', path: '/invoices', icon: FileText },
     { name: 'AI Proposal Writer', path: '/ai-generator', icon: Sparkles },
+    { name: 'Proposals & Agreements', path: '/proposals', icon: FileCheck2 },
+  ];
+
+  if (role === 'OWNER') {
+    ownerNavItems.push({ name: 'Agency Settings', path: '/settings/agency', icon: Building2 });
+    ownerNavItems.push({ name: 'Team', path: '/settings/team', icon: Users });
+  }
+
+  const adminNavItems = [
+    { name: 'Client CRM', path: '/clients', icon: Users },
+    { name: 'Proposals & Agreements', path: '/proposals', icon: FileCheck2 },
+    { name: 'Proposal Writer', path: '/ai-generator', icon: Sparkles },
+  ];
+  const staffNavItems = [
+    { name: 'My Projects', path: '/projects', icon: Briefcase },
+    { name: 'Assigned Tasks', path: '/tasks', icon: CheckSquare },
   ];
 
   const clientNavItems = [
@@ -31,7 +49,7 @@ export default function Sidebar() {
     { name: 'My Invoices & Payments', path: '/invoices', icon: FileText },
   ];
 
-  const navItems = isClient ? clientNavItems : ownerNavItems;
+  const navItems = isClient ? clientNavItems : role === 'OWNER' ? ownerNavItems : role === 'ADMIN' ? adminNavItems : role === 'MEMBER' ? staffNavItems : [];
 
   return (
     <aside className="w-64 bg-surface border-r border-border min-h-screen flex flex-col justify-between p-5 text-ink">
@@ -47,7 +65,7 @@ export default function Sidebar() {
             <span className={`text-[10px] tracking-wider uppercase font-mono px-2 py-0.5 rounded border inline-block mt-1 ${
               isClient ? 'bg-forest/10 text-forest border-forest/20' : 'bg-brass/10 text-brass-dark border-brass/20'
             }`}>
-              {isClient ? 'CLIENT PORTAL' : user?.role || 'PRO PLAN'}
+              {isClient ? 'CLIENT PORTAL' : role === 'MEMBER' ? 'STAFF' : role || 'PRO PLAN'}
             </span>
           </div>
         </div>

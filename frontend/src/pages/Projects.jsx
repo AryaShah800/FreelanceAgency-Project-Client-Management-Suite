@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { Briefcase, Calendar, IndianRupee, Trash2, Plus, TrendingUp, DollarSign, Receipt } from 'lucide-react';
 
 export default function Projects() {
+  const { user } = useAuth();
+  const isOwner = String(user?.role || '').toUpperCase() === 'OWNER';
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -34,13 +37,13 @@ export default function Projects() {
     try {
       const [projRes, clientRes] = await Promise.all([
         api.get('/projects'),
-        api.get('/clients'),
+        isOwner ? api.get('/clients') : Promise.resolve({ data: [] }),
       ]);
       setProjects(projRes.data);
       setClients(clientRes.data);
 
       // Fetch profitability for each project
-      projRes.data.forEach(async (p) => {
+      if (isOwner) projRes.data.forEach(async (p) => {
         try {
           const profRes = await api.get(`/projects/${p.id}/expenses/profitability`);
           setProjectProfitability((prev) => ({ ...prev, [p.id]: profRes.data }));
@@ -89,7 +92,7 @@ export default function Projects() {
 
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-paper">
-      <Navbar title="Project Ledger & Net Profitability" onQuickAction={() => setShowModal(true)} />
+      <Navbar title={isOwner ? "Project Ledger & Net Profitability" : "Assigned Projects"} onQuickAction={isOwner ? () => setShowModal(true) : null} />
 
       <main className="flex-1 p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl">
@@ -112,12 +115,12 @@ export default function Projects() {
                     </span>
                     <h3 className="font-display font-semibold text-base text-ink mt-2">{project.title}</h3>
                   </div>
-                  <button
+                  {isOwner && <button
                     onClick={() => handleDelete(project.id)}
                     className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-rust transition-opacity p-0.5"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </button>}
                 </div>
 
                 {project.description && (
@@ -125,7 +128,7 @@ export default function Projects() {
                 )}
 
                 {/* Net Profitability Calculator Box */}
-                <div className="p-3 bg-paper rounded border border-border/80 text-xs space-y-2">
+                {isOwner && <div className="p-3 bg-paper rounded border border-border/80 text-xs space-y-2">
                   <div className="flex items-center justify-between font-mono">
                     <span className="text-ink-muted">Net Profit Margin:</span>
                     <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
@@ -139,10 +142,10 @@ export default function Projects() {
                     <div>Rev: <strong className="text-ink">₹{metrics.revenue?.toLocaleString()}</strong></div>
                     <div>Exp: <strong className="text-rust">₹{metrics.totalExpenses?.toLocaleString()}</strong></div>
                   </div>
-                </div>
+                </div>}
 
                 <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
-                  <button
+                  {isOwner && <button
                     onClick={() => {
                       setSelectedProjectId(project.id);
                       setShowExpenseModal(true);
@@ -150,7 +153,7 @@ export default function Projects() {
                     className="text-brass-dark hover:underline font-semibold flex items-center gap-1 text-[11px]"
                   >
                     <Receipt className="w-3.5 h-3.5" /> Log Expense
-                  </button>
+                  </button>}
 
                   <div className="flex items-center gap-1 text-ink-muted font-mono text-[11px]">
                     <Calendar className="w-3.5 h-3.5" />
@@ -162,19 +165,19 @@ export default function Projects() {
           })}
 
           {/* New Project Ghost CTA Card */}
-          <button
+          {isOwner && <button
             onClick={() => setShowModal(true)}
             className="border-2 border-dashed border-border hover:border-brass/40 transition-all rounded bg-surface/40 p-6 flex flex-col items-center justify-center text-center space-y-2 h-full min-h-[160px]"
           >
             <Plus className="w-6 h-6 text-ink-faint" />
             <span className="font-display text-sm font-semibold text-ink">New Project Contract</span>
             <span className="text-[11px] text-ink-muted">Add another client assignment</span>
-          </button>
+          </button>}
         </div>
       </main>
 
       {/* Expense Modal */}
-      {showExpenseModal && (
+      {showExpenseModal && isOwner && (
         <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border p-6 rounded shadow-lg w-full max-w-md">
             <h3 className="font-display font-bold text-lg text-ink mb-1">Log Project Expense</h3>
@@ -239,7 +242,7 @@ export default function Projects() {
       )}
 
       {/* Modal */}
-      {showModal && (
+      {showModal && isOwner && (
         <div className="fixed inset-0 bg-ink/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border p-6 rounded shadow-lg w-full max-w-md">
             <h3 className="font-display font-bold text-lg text-ink mb-4">Create Project</h3>

@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/audit-events")
-@PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
+@PreAuthorize("hasRole('OWNER')")
 public class AuditEventController {
 
     private final AuditEventService auditEventService;

@@ -10,14 +10,21 @@ spring:
     show-sql: false
 
 app:
+  email:
+    delivery-mode: console
+    frontend-base-url: http://localhost:5173
   cors:
     allowed-origins: http://localhost:5173
   jwt:
     secret: test-only-jwt-signing-secret-must-be-at-least-32-bytes-long
     expiration-ms: 3600000
+  bootstrap:
+    secret: test-only-owner-bootstrap-secret-at-least-32-characters
   gemini:
     api-key: demo_key
     api-url: http://localhost:65535/not-used
   razorpay:
     key-id: ""
     key-secret: ""
+
+JWT_SECRET: "this_is_a_very_long_secret_key_for_testing_purposes"

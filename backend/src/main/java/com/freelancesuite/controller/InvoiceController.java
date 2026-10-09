@@ -19,6 +19,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/invoices")
+@PreAuthorize("hasAnyRole('OWNER', 'CLIENT')")
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
@@ -41,7 +42,7 @@ public class InvoiceController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<InvoiceDto> createInvoice(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody InvoiceDto dto) {
@@ -49,7 +50,7 @@ public class InvoiceController {
     }
 
     @PostMapping("/generate-from-time/{projectId}")
-    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<InvoiceDto> generateFromUnbilledTime(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long projectId) {

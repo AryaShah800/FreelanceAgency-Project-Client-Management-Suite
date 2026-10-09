@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Download, Plus, Clock, CreditCard, ShieldCheck } from 'lucide-react';
+import { trackEvent } from '../services/analytics';
 
 export default function Invoices() {
   const { user } = useAuth();
@@ -99,6 +100,7 @@ export default function Invoices() {
   const handleRazorpayPayment = async (invoice) => {
     setPayingInvoiceId(invoice.id);
     try {
+      trackEvent('Payment checkout started');
       const orderRes = await api.post(`/payments/razorpay/create-order?invoiceId=${invoice.id}`);
       const orderData = orderRes.data;
 
@@ -117,6 +119,7 @@ export default function Invoices() {
               razorpaySignature: response.razorpay_signature,
               invoiceId: invoice.id,
             });
+            trackEvent('Payment completed');
             alert('Payment Verified & Completed Successfully!');
             fetchInvoices();
           } catch (verifyErr) {

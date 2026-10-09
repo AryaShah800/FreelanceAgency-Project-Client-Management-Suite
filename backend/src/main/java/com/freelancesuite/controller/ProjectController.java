@@ -24,11 +24,13 @@ public class ProjectController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER', 'CLIENT')")
     public ResponseEntity<List<ProjectDto>> getAllProjects(@AuthenticationPrincipal UserPrincipal userPrincipal) {
         return ResponseEntity.ok(projectService.getProjectsForUser(userPrincipal));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER', 'CLIENT')")
     public ResponseEntity<ProjectDto> getProjectById(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long id) {
@@ -36,7 +38,7 @@ public class ProjectController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<ProjectDto> createProject(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody ProjectDto dto) {
@@ -44,7 +46,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
+    @PreAuthorize("hasRole('OWNER')")
     public ResponseEntity<ProjectDto> updateProject(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long id,

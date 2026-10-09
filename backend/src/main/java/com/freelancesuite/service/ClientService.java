@@ -6,6 +6,7 @@ import com.freelancesuite.entity.Client;
 import com.freelancesuite.entity.enums.DealStage;
 import com.freelancesuite.repository.AgencyRepository;
 import com.freelancesuite.repository.ClientRepository;
+import com.freelancesuite.repository.ProjectRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,11 +19,13 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final AgencyRepository agencyRepository;
+    private final ProjectRepository projectRepository;
 
     @Autowired
-    public ClientService(ClientRepository clientRepository, AgencyRepository agencyRepository) {
+    public ClientService(ClientRepository clientRepository, AgencyRepository agencyRepository, ProjectRepository projectRepository) {
         this.clientRepository = clientRepository;
         this.agencyRepository = agencyRepository;
+        this.projectRepository = projectRepository;
     }
 
     public List<ClientDto> getAllClients(Long agencyId, DealStage dealStage) {
@@ -91,6 +94,13 @@ public class ClientService {
     public void deleteClient(Long id, Long agencyId) {
         Client client = clientRepository.findByIdAndAgencyId(id, agencyId)
                 .orElseThrow(() -> new IllegalArgumentException("Client not found"));
+
+        long projectCount = projectRepository.countByClientId(id);
+        if (projectCount > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot delete client with " + projectCount + " existing project(s). Delete or reassign them first.");
+        }
+
         clientRepository.delete(client);
     }
 

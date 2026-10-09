@@ -32,6 +32,7 @@ public class TaskCommentService {
         this.messagingTemplate = messagingTemplate;
     }
 
+    @Transactional(readOnly = true)
     public List<TaskCommentDto> getCommentsForTask(Long taskId, UserPrincipal userPrincipal) {
         assertTaskAccess(taskId, userPrincipal);
         return commentRepository.findByTaskIdOrderByCreatedAtAsc(taskId)
@@ -47,10 +48,12 @@ public class TaskCommentService {
         AppUser author = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
+        String safeContent = org.springframework.web.util.HtmlUtils.htmlEscape(content);
+
         TaskComment comment = TaskComment.builder()
                 .task(task)
                 .author(author)
-                .content(content)
+                .content(safeContent)
                 .build();
 
         comment = commentRepository.save(comment);
@@ -85,6 +88,10 @@ public class TaskCommentService {
             throw new org.springframework.security.access.AccessDeniedException("You cannot access comments for this task");
         }
         boolean isClient = userPrincipal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
+        if (userPrincipal.getRole() == com.freelancesuite.entity.enums.Role.MEMBER
+                && (task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(userPrincipal.getId()))) {
+            throw new org.springframework.security.access.AccessDeniedException("This task is not assigned to you.");
+        }
         if (isClient && (!task.getProject().getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail()) || !Boolean.TRUE.equals(task.getIsClientVisible()))) {
             throw new org.springframework.security.access.AccessDeniedException("You cannot access comments for this task");
         }

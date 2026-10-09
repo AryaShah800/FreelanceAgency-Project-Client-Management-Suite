@@ -50,7 +50,9 @@ class ProposalConversionServiceTest {
     }
 
     private Proposal openProposal() {
+        com.freelancesuite.entity.Agency dummyAgency = com.freelancesuite.entity.Agency.builder().id(99L).name("Test Agency").build();
         return Proposal.builder()
+                .agency(dummyAgency)
                 .shareToken("tok-123")
                 .clientName("Acme Co")
                 .projectScope("Build the thing")
@@ -69,7 +71,8 @@ class ProposalConversionServiceTest {
         PublicPortalProposalDto dto = service.getPublicProposal("tok-123");
 
         assertEquals("Acme Co", dto.getClientName());
-        verify(auditEventService).logEvent(anyLong(), eq("Public Client"), eq("PROPOSAL_VIEWED"), anyString());
+        verify(auditEventService).logEvent(anyLong(), eq("Public Client"), eq("PROPOSAL_VIEWED"),
+                argThat(details -> !details.contains("tok-123")));
     }
 
     @Test
@@ -98,28 +101,51 @@ class ProposalConversionServiceTest {
     }
 
     @Test
-    void signPublicProposalComputesAHashAndAContractPdfThenPersists() {
+    void proposalAcceptanceComputesAHashAndAnAcceptancePdfThenPersists() {
         Proposal proposal = openProposal();
         when(proposalRepository.findByShareToken("tok-123")).thenReturn(Optional.of(proposal));
-        when(proposalRepository.save(any(Proposal.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(proposalRepository.saveAndFlush(any(Proposal.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        PublicPortalProposalDto dto = service.signPublicProposal("tok-123", "Jane Doe");
+        PublicPortalProposalDto dto = service.recordProposalAcceptance("tok-123", "Jane Doe");
 
         assertTrue(dto.getIsSigned());
         assertEquals("Jane Doe", dto.getSignatureName());
         assertNotNull(dto.getSignatureHash());
         assertEquals(64, dto.getSignatureHash().length(), "SHA-256 hex digest should be 64 characters");
-        assertNotNull(proposal.getContractPdf());
-        assertTrue(proposal.getContractPdf().length > 0);
-        verify(proposalRepository).save(proposal);
-        verify(auditEventService).logEvent(anyLong(), eq("Jane Doe (Client)"), eq("CONTRACT_SIGNED"), anyString());
+        assertNotNull(proposal.getAcceptanceRecordPdf());
+        assertTrue(proposal.getAcceptanceRecordPdf().length > 0);
+        verify(proposalRepository).saveAndFlush(proposal);
+        verify(auditEventService).logEvent(anyLong(), eq("Jane Doe (Client)"), eq("PROPOSAL_ACCEPTED"),
+                argThat(details -> !details.contains("tok-123")));
     }
 
     @Test
-    void getSignedContractPdfRejectsAnUnsignedProposal() {
+    void getAcceptanceRecordPdfRejectsAnUnsignedProposal() {
         when(proposalRepository.findByShareToken("tok-123")).thenReturn(Optional.of(openProposal()));
 
-        assertThrows(IllegalArgumentException.class, () -> service.getSignedContractPdf("tok-123"));
+        assertThrows(IllegalArgumentException.class, () -> service.getAcceptanceRecordPdf("tok-123"));
+    }
+
+    @Test
+    void getAcceptanceRecordPdfUsesTheSameRevocationCheckAsPublicProposalReads() {
+        Proposal revoked = openProposal();
+        revoked.setSigned(true);
+        revoked.setAcceptanceRecordPdf(new byte[]{1, 2, 3});
+        revoked.setRevoked(true);
+        when(proposalRepository.findByShareToken("tok-123")).thenReturn(Optional.of(revoked));
+
+        assertThrows(IllegalArgumentException.class, () -> service.getAcceptanceRecordPdf("tok-123"));
+    }
+
+    @Test
+    void getAcceptanceRecordPdfReturnsTheSavedSnapshotAfterAcceptance() {
+        Proposal accepted = openProposal();
+        accepted.setSigned(true);
+        accepted.setExpiresAt(LocalDateTime.now().minusDays(1));
+        accepted.setAcceptanceRecordPdf(new byte[]{1, 2, 3});
+        when(proposalRepository.findByShareToken("tok-123")).thenReturn(Optional.of(accepted));
+
+        assertArrayEquals(new byte[]{1, 2, 3}, service.getAcceptanceRecordPdf("tok-123"));
     }
 
     @Test
@@ -144,7 +170,7 @@ class ProposalConversionServiceTest {
                 .build();
 
         when(proposalRepository.findByShareToken("tok-123")).thenReturn(Optional.of(proposal));
-        when(clientRepository.findAll()).thenReturn(List.of(existingClient));
+        when(clientRepository.findByAgencyIdAndCompanyNameIgnoreCase(any(), eq("Acme Co"))).thenReturn(Optional.of(existingClient));
         when(clientRepository.save(any(Client.class))).thenAnswer(inv -> inv.getArgument(0));
         when(projectRepository.save(any(Project.class))).thenAnswer(inv -> {
             Project p = inv.getArgument(0);

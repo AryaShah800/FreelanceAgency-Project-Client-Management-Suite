@@ -9,6 +9,8 @@ public class PublicPortalProposalDto {
     private String projectScope;
     private String deliverables;
     private String paymentTerms;
+    private String documentHtml;
+    private String agencyName;
     private BigDecimal estimatedBudget;
     private Boolean isSigned;
     private String signatureName;
@@ -94,6 +96,10 @@ public class PublicPortalProposalDto {
     public void setDeliverables(String deliverables) { this.deliverables = deliverables; }
     public String getPaymentTerms() { return paymentTerms; }
     public void setPaymentTerms(String paymentTerms) { this.paymentTerms = paymentTerms; }
+    public String getDocumentHtml() { return documentHtml; }
+    public void setDocumentHtml(String documentHtml) { this.documentHtml = documentHtml; }
+    public String getAgencyName() { return agencyName; }
+    public void setAgencyName(String agencyName) { this.agencyName = agencyName; }
     public BigDecimal getEstimatedBudget() { return estimatedBudget; }
     public void setEstimatedBudget(BigDecimal estimatedBudget) { this.estimatedBudget = estimatedBudget; }
     public Boolean getIsSigned() { return isSigned; }

@@ -1,7 +1,7 @@
 package com.freelancesuite.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.freelancesuite.dto.PaymentVerificationRequest;
 import com.freelancesuite.entity.Invoice;
 import com.freelancesuite.entity.Payment;
@@ -32,7 +32,7 @@ public class PaymentService {
 
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
-    private final WebClient webClient;
+    private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
     private final String razorpayKeyId;
     private final String razorpayKeySecret;
@@ -46,7 +46,7 @@ public class PaymentService {
                           @Value("${app.razorpay.webhook-secret:}") String razorpayWebhookSecret) {
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
-        this.webClient = webClientBuilder.baseUrl("https://api.razorpay.com/v1").build();
+        this.webClientBuilder = webClientBuilder;
         this.objectMapper = objectMapper;
         this.razorpayKeyId = razorpayKeyId;
         this.razorpayKeySecret = razorpayKeySecret;
@@ -54,13 +54,15 @@ public class PaymentService {
     }
 
     public Map<String, Object> createRazorpayOrder(Long invoiceId, UserPrincipal userPrincipal) {
-        Invoice invoice = requireClientInvoice(invoiceId, userPrincipal);
         ensureConfigured();
-
+        Invoice invoice = requireClientInvoice(invoiceId, userPrincipal);
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new IllegalArgumentException("This invoice has already been paid");
+        }
         BigDecimal total = invoice.getTotalAmount();
         long amountInPaise = total.multiply(BigDecimal.valueOf(100)).longValueExact();
 
-        Map response = webClient.post()
+        Map response = webClient().post()
                 .uri("/orders")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .headers(headers -> headers.setBasicAuth(razorpayKeyId, razorpayKeySecret, StandardCharsets.UTF_8))
@@ -100,6 +102,7 @@ public class PaymentService {
      */
     @Transactional
     public Payment verifyAndRecordPayment(PaymentVerificationRequest request, UserPrincipal userPrincipal) {
+        ensureConfigured();
         Invoice invoice = requireClientInvoice(request.getInvoiceId(), userPrincipal);
 
         if (invoice.getStatus() == InvoiceStatus.PAID) {
@@ -108,6 +111,24 @@ public class PaymentService {
         String payload = request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId();
         if (!HmacSignatureUtil.verify(payload, razorpayKeySecret, request.getRazorpaySignature())) {
             throw new IllegalArgumentException("Payment signature verification failed");
+        }
+
+        // Fix: Invoice Swapping Exploit. Fetch the order directly from Razorpay to securely
+        // verify that this order was actually created for the requested invoice.
+        Map orderInfo = webClient().get()
+                .uri("/orders/" + request.getRazorpayOrderId())
+                .headers(headers -> headers.setBasicAuth(razorpayKeyId, razorpayKeySecret, StandardCharsets.UTF_8))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        if (orderInfo == null) {
+            throw new IllegalArgumentException("Could not verify Razorpay order details");
+        }
+
+        Map notes = (Map) orderInfo.get("notes");
+        if (notes == null || !String.valueOf(invoice.getId()).equals(notes.get("invoiceId"))) {
+            throw new IllegalArgumentException("Invoice mismatch! This payment does not belong to the requested invoice.");
         }
 
         return recordPaymentIfAbsent(invoice, request.getRazorpayPaymentId(), request.getRazorpayOrderId());
@@ -124,8 +145,10 @@ public class PaymentService {
     @Transactional
     public void handleWebhookEvent(String rawBody, String signatureHeader) {
         if (razorpayWebhookSecret == null || razorpayWebhookSecret.isBlank()) {
-            log.warn("Received a Razorpay webhook call but RAZORPAY_WEBHOOK_SECRET is not configured — ignoring.");
-            throw new IllegalStateException("Webhook is not configured for this workspace");
+            log.warn("Received a Razorpay webhook call but RAZORPAY_WEBHOOK_SECRET is not configured.");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Payment webhooks are not configured for this workspace");
         }
         if (!HmacSignatureUtil.verify(rawBody, razorpayWebhookSecret, signatureHeader)) {
             throw new org.springframework.security.access.AccessDeniedException("Invalid webhook signature");
@@ -202,12 +225,26 @@ public class PaymentService {
         if (!invoice.getProject().getClient().getAgency().getId().equals(userPrincipal.getAgencyId())) {
             throw new IllegalArgumentException("Unauthorized invoice access");
         }
+
+        boolean isClient = userPrincipal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
+        if (isClient && !invoice.getProject().getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail())) {
+            throw new IllegalArgumentException("Unauthorized invoice access");
+        }
+
         return invoice;
     }
 
     private void ensureConfigured() {
-        if (razorpayKeyId == null || razorpayKeyId.isBlank() || razorpayKeySecret == null || razorpayKeySecret.isBlank()) {
-            throw new IllegalArgumentException("Online payments are not configured for this workspace");
+        if (razorpayKeyId == null || razorpayKeyId.isBlank()
+                || razorpayKeySecret == null || razorpayKeySecret.isBlank()
+                || razorpayWebhookSecret == null || razorpayWebhookSecret.isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Online payments require Razorpay API keys and a webhook signing secret");
         }
+    }
+
+    private WebClient webClient() {
+        return webClientBuilder.baseUrl("https://api.razorpay.com/v1").build();
     }
 }

@@ -28,9 +28,13 @@ public class PaymentWebhookController {
 
     @PostMapping("/webhook")
     public ResponseEntity<Void> handleRazorpayWebhook(
-            @RequestBody String rawBody,
+            @RequestBody byte[] rawBody,
             @RequestHeader(value = "X-Razorpay-Signature", required = false) String signature) {
-        paymentService.handleWebhookEvent(rawBody, signature);
-        return ResponseEntity.ok().build();
+        try {
+            paymentService.handleWebhookEvent(new String(rawBody, java.nio.charset.StandardCharsets.UTF_8), signature);
+            return ResponseEntity.ok().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).build();
+        }
     }
 }

@@ -15,7 +15,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/expenses")
-@PreAuthorize("hasAnyRole('OWNER', 'MEMBER')")
+@PreAuthorize("hasRole('OWNER')")
 public class ExpenseController {
 
     private final ExpenseService expenseService;

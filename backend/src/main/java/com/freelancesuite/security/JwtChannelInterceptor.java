@@ -32,8 +32,8 @@ import java.util.regex.Pattern;
 @Component
 public class JwtChannelInterceptor implements ChannelInterceptor {
 
-    private static final Pattern PROJECT_COMMENTS_TOPIC =
-            Pattern.compile("^/topic/project/(\\d+)/comments$");
+    private static final Pattern PROJECT_SECURED_TOPIC =
+            Pattern.compile("^/topic/project/(\\d+)(/.*)?$");
 
     private final JwtTokenProvider tokenProvider;
     private final CustomUserDetailsService userDetailsService;
@@ -58,6 +58,10 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             Authentication authentication = authenticate(accessor);
             accessor.setUser(authentication);
+        } else if (StompCommand.SEND.equals(accessor.getCommand())) {
+            // The app has no client-to-server STOMP handlers. In particular,
+            // never let clients publish directly to /topic broker destinations.
+            throw new AccessDeniedException("Clients cannot publish WebSocket messages");
         } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
             authorizeSubscription(accessor);
         }
@@ -72,6 +76,11 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
         }
         Long userId = tokenProvider.getUserIdFromJWT(token);
         UserDetails userDetails = userDetailsService.loadUserById(userId);
+        if (!(userDetails instanceof UserPrincipal principal)
+                || !principal.isEnabled()
+                || tokenProvider.getTokenVersionFromJWT(token) != principal.getTokenVersion()) {
+            throw new BadCredentialsException("This session has expired. Sign in again.");
+        }
         return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
     }
 
@@ -80,21 +89,34 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
         if (destination == null) {
             return;
         }
-        Matcher matcher = PROJECT_COMMENTS_TOPIC.matcher(destination);
-        if (!matcher.matches()) {
-            // Not a project-comments topic — nothing extra to check here.
-            return;
-        }
-
-        Object principal = accessor.getUser();
-        if (!(principal instanceof UsernamePasswordAuthenticationToken authentication)
+        Object principalObject = accessor.getUser();
+        if (!(principalObject instanceof UsernamePasswordAuthenticationToken authentication)
                 || !(authentication.getPrincipal() instanceof UserPrincipal userPrincipal)) {
             throw new AccessDeniedException("You must be authenticated to subscribe to this topic");
         }
+        // These shared feeds contain agency-wide updates. Only Owners may subscribe;
+        // staff and clients use their scoped HTTP queries instead.
+        if (destination.equals("/topic/tasks") || destination.startsWith("/topic/project/")) {
+            if (userPrincipal.getRole() != com.freelancesuite.entity.enums.Role.OWNER) {
+                throw new AccessDeniedException("This live feed is available to the agency owner only");
+            }
+        }
+        Matcher matcher = PROJECT_SECURED_TOPIC.matcher(destination);
+        if (!matcher.matches()) {
+            // Not a secured project topic — nothing extra to check here.
+            return;
+        }
 
         Long projectId = Long.valueOf(matcher.group(1));
-        boolean allowed = projectRepository.findByIdAndAgencyId(projectId, userPrincipal.getAgencyId()).isPresent();
-        if (!allowed) {
+        com.freelancesuite.entity.Project project = projectRepository.findByIdAndAgencyId(projectId, userPrincipal.getAgencyId())
+                .orElse(null);
+
+        if (project == null) {
+            throw new AccessDeniedException("You cannot subscribe to comments for this project");
+        }
+
+        boolean isClient = userPrincipal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
+        if (isClient && !project.getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail())) {
             throw new AccessDeniedException("You cannot subscribe to comments for this project");
         }
     }

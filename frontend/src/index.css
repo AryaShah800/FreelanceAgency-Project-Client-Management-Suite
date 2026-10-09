@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 :root {
   --color-bg: #F7F4EE;
@@ -56,4 +55,54 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-ink-faint);
+}
+
+/* True WYSIWYG Editor Styling */
+.wysiwyg-editor {
+  outline: none;
+  min-height: 120px;
+}
+.wysiwyg-editor p {
+  margin-bottom: 0.6em;
+}
+.wysiwyg-editor strong, .wysiwyg-editor b {
+  font-weight: 700;
+  color: #1C1B19;
+}
+.wysiwyg-editor em, .wysiwyg-editor i {
+  font-style: italic;
+  color: #2b2926;
+}
+.wysiwyg-editor ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.6rem !important;
+}
+.wysiwyg-editor ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.6rem !important;
+}
+.wysiwyg-editor li {
+  margin-bottom: 0.25rem;
+  display: list-item !important;
+}
+.wysiwyg-editor h4 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-top: 0.8rem;
+  margin-bottom: 0.4rem;
+  color: #1C1B19;
+}
+.wysiwyg-editor blockquote {
+  border-left: 3px solid #B8860B;
+  background: rgba(232, 217, 181, 0.25);
+  padding: 0.4rem 0.8rem;
+  margin: 0.5rem 0;
+  font-style: italic;
+  color: #6B6862;
+  border-radius: 0 4px 4px 0;
 }

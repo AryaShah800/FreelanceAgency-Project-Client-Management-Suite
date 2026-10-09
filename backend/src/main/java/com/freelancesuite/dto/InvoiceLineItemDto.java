@@ -16,6 +16,7 @@ public class InvoiceLineItemDto {
     private Integer quantity;
 
     @NotNull(message = "Unit price is required")
+    @Min(value = 0, message = "Unit price cannot be negative")
     private BigDecimal unitPrice;
 
     private BigDecimal amount;

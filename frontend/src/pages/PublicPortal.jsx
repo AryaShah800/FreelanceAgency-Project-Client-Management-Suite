@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Sparkles, Building2, Check, PenTool, ShieldCheck, CreditCard, ArrowRight, FileText, CheckCircle2 } from 'lucide-react';
+import { sanitizeHtml } from '../utils/formatUtils';
 
 export default function PublicPortal() {
   const { token } = useParams();
   const [proposal, setProposal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [signerName, setSignerName] = useState('Sarah Jenkins');
+  const [signerName, setSignerName] = useState('');
+  const [signerEmail, setSignerEmail] = useState('');
   const [signing, setSigning] = useState(false);
   const [converting, setConverting] = useState(false);
   const [conversionResult, setConversionResult] = useState(null);
@@ -44,10 +46,10 @@ export default function PublicPortal() {
     setSigning(true);
     try {
       const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-      const res = await axios.post(`${baseURL}/public/portal/${token}/sign`, { signerName });
+      const res = await axios.post(`${baseURL}/public/portal/${token}/acceptance`, { signerName, signerEmail });
       setProposal(res.data);
     } catch (err) {
-      alert('Error signing contract proposal');
+      alert('Could not record proposal acceptance.');
     } finally {
       setSigning(false);
     }
@@ -129,12 +131,12 @@ export default function PublicPortal() {
               ONE-CLICK PROPOSAL AUTOMATION LOOP
             </div>
             <h2 className="font-display font-bold text-xl text-ink">
-              {proposal.isConvertedToProject ? 'Project Provisioned & Active!' : proposal.isSigned ? 'Contract Signed - Ready for One-Click Conversion' : 'Review Proposal & Execute Digital Agreement'}
+              {proposal.isConvertedToProject ? 'Project Provisioned & Active!' : proposal.isSigned ? 'Acceptance Recorded - Ready for Conversion' : 'Review Proposal & Record Acceptance'}
             </h2>
             <p className="text-xs text-ink-muted">
               {proposal.isConvertedToProject
-                ? 'Your project workspace and 50% deposit invoice have been automatically generated.'
-                : 'Approve the scope below to automatically provision your active project workspace and 50% deposit invoice.'}
+                ? 'Your project workspace and the agreed milestone invoices have been generated.'
+                : 'Approve the scope below to provision your project workspace and invoices from the agreed payment schedule.'}
             </p>
           </div>
 
@@ -155,7 +157,7 @@ export default function PublicPortal() {
                   className="bg-brass hover:bg-brass-dark text-white font-bold text-xs px-6 py-3 rounded-full shadow-md inline-flex items-center gap-2 transition-all"
                 >
                   <PenTool className="w-4 h-4" />
-                  Sign Contract Below
+                  Record Acceptance Below
                 </a>
               )
             ) : (
@@ -179,11 +181,12 @@ export default function PublicPortal() {
                 <span className="text-ink-muted">Project ID:</span> <strong className="text-ink">#{conversionResult.projectId}</strong>
               </div>
               <div>
-                <span className="text-ink-muted">Deposit Invoice:</span> <strong className="text-brass-dark">{conversionResult.depositInvoiceNumber}</strong>
+                <span className="text-ink-muted">First Invoice:</span> <strong className="text-brass-dark">{conversionResult.depositInvoiceNumber}</strong>
               </div>
               <div>
-                <span className="text-ink-muted">Deposit Due:</span> <strong className="text-ink">₹{conversionResult.depositTotalAmount?.toLocaleString()}</strong>
+                <span className="text-ink-muted">First Invoice Total:</span> <strong className="text-ink">₹{conversionResult.depositTotalAmount?.toLocaleString()}</strong>
               </div>
+              <p className="text-xs text-ink-muted">{conversionResult.invoiceCount} invoice(s) created from the agreed schedule.</p>
             </div>
           </div>
         )}
@@ -198,6 +201,10 @@ export default function PublicPortal() {
             <FileText className="w-8 h-8 text-brass" />
           </div>
 
+          {proposal.documentHtml ? (
+            <div className="proposal-document prose prose-sm max-w-none overflow-x-auto"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(proposal.documentHtml) }} />
+          ) : <>
           <div className="space-y-4">
             <h3 className="font-display font-bold text-base text-ink">1. Project Scope</h3>
             <div className="text-xs leading-relaxed bg-paper p-4 rounded border border-border/80">
@@ -219,25 +226,26 @@ export default function PublicPortal() {
               <div className="mt-1 text-ink-muted">{proposal.paymentTerms}</div>
             </div>
           </div>
+          </>}
 
           {/* Signatures & Execution Section */}
           <div id="sign-section" className="pt-8 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-8 text-xs font-mono">
             <div className="space-y-3">
-              <h4 className="font-bold text-ink">Client Digital Sign-Off</h4>
+              <h4 className="font-bold text-ink">Client Acceptance Record</h4>
 
               {proposal.isSigned ? (
                 <div className="p-4 bg-forest-soft border border-forest/30 rounded space-y-1 text-forest text-[11px]">
                   <div className="font-display italic text-lg font-bold text-ink">{proposal.signatureName}</div>
-                  <div>Digitally Signed: {new Date(proposal.signedAt).toLocaleString()}</div>
+                  <div>Acceptance recorded: {new Date(proposal.signedAt).toLocaleString()}</div>
                   <div className="text-ink-faint break-all">SHA-256: {proposal.signatureHash}</div>
                   <a
-                    href={`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/public/portal/${token}/contract.pdf`}
+                    href={`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/public/portal/${token}/acceptance-record.pdf`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 text-forest font-semibold underline underline-offset-2 mt-1"
                   >
                     <FileText className="w-3.5 h-3.5" />
-                    Download signed contract PDF
+                    Download signed proposal record
                   </a>
                 </div>
               ) : (
@@ -252,24 +260,37 @@ export default function PublicPortal() {
                       className="w-full bg-surface border border-border text-ink rounded p-2 focus:outline-none font-display font-bold text-sm"
                     />
                   </div>
+                  <div>
+                    <label className="block text-ink-muted text-[11px] font-semibold mb-1">Work Email *</label>
+                    <input
+                      type="email"
+                      required
+                      maxLength={254}
+                      value={signerEmail}
+                      onChange={(e) => setSignerEmail(e.target.value)}
+                      className="w-full bg-surface border border-border text-ink rounded p-2 focus:outline-none text-sm"
+                    />
+                  </div>
+                  <p className="text-[10px] leading-relaxed text-ink-muted">
+                    This records your acceptance, name, email, and time. It does not verify your identity or replace legal advice.
+                  </p>
                   <button
                     type="submit"
                     disabled={signing}
                     className="w-full bg-forest hover:bg-forest/90 text-white font-semibold py-2 rounded flex items-center justify-center gap-1.5 text-xs shadow-xs"
                   >
                     <ShieldCheck className="w-4 h-4" />
-                    {signing ? 'Signing...' : 'Sign & Accept Contract'}
+                    {signing ? 'Recording...' : 'Record Acceptance'}
                   </button>
                 </form>
               )}
             </div>
 
             <div className="space-y-3">
-              <h4 className="font-bold text-ink">Agency Authorized Signature</h4>
+              <h4 className="font-bold text-ink">Proposal Issued By</h4>
               <div className="p-4 bg-paper border border-border rounded space-y-1 text-ink text-[11px]">
-                <div className="font-display italic text-lg font-bold text-brass-dark">Alex Mercer</div>
-                <div>Authorized Agency Representative</div>
-                <div>Apex Digital Solutions</div>
+                <div className="font-display italic text-lg font-bold text-brass-dark">{proposal.agencyName || 'Agency'}</div>
+                <div>Proposal issuer</div>
               </div>
             </div>
           </div>

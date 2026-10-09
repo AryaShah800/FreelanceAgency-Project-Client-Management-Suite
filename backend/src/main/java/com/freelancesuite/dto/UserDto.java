@@ -9,6 +9,7 @@ public class UserDto {
     private Role role;
     private Double hourlyRate;
     private Long agencyId;
+    private String agencyName;
 
     public UserDto() {}
 
@@ -30,6 +31,7 @@ public class UserDto {
         private Role role;
         private Double hourlyRate;
         private Long agencyId;
+        private String agencyName;
 
         public UserDtoBuilder id(Long id) { this.id = id; return this; }
         public UserDtoBuilder name(String name) { this.name = name; return this; }
@@ -37,9 +39,12 @@ public class UserDto {
         public UserDtoBuilder role(Role role) { this.role = role; return this; }
         public UserDtoBuilder hourlyRate(Double hourlyRate) { this.hourlyRate = hourlyRate; return this; }
         public UserDtoBuilder agencyId(Long agencyId) { this.agencyId = agencyId; return this; }
+        public UserDtoBuilder agencyName(String agencyName) { this.agencyName = agencyName; return this; }
 
         public UserDto build() {
-            return new UserDto(id, name, email, role, hourlyRate, agencyId);
+            UserDto dto = new UserDto(id, name, email, role, hourlyRate, agencyId);
+            dto.setAgencyName(agencyName);
+            return dto;
         }
     }
 
@@ -55,4 +60,6 @@ public class UserDto {
     public void setHourlyRate(Double hourlyRate) { this.hourlyRate = hourlyRate; }
     public Long getAgencyId() { return agencyId; }
     public void setAgencyId(Long agencyId) { this.agencyId = agencyId; }
+    public String getAgencyName() { return agencyName; }
+    public void setAgencyName(String agencyName) { this.agencyName = agencyName; }
 }
