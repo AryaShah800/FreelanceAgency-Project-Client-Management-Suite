@@ -1,0 +1,32 @@
+# Secrets and local environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Build output and dependency caches
+target/
+**/target/
+.m2/
+**/.m2/
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+
+# Git, editors, and local development helpers
+.git/
+.gitignore
+.idea/
+.vscode/
+run-dev.*
+*.bat
+*.ps1
+scripts/
+
+# Local noise
+*.log
+*.pid
+*.swp
+Thumbs.db
+.DS_Store
