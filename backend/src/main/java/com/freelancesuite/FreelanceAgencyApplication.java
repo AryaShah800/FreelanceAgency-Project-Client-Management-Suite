@@ -22,12 +22,19 @@ public class FreelanceAgencyApplication {
     static void validateLaunchConfiguration(Environment environment) {
         String[] profiles = environment.getActiveProfiles();
         boolean dev = Arrays.asList(profiles).contains("dev");
+        boolean demo = Arrays.asList(profiles).contains("demo");
         boolean prod = Arrays.asList(profiles).contains("prod");
-        if (dev == prod) {
-            throw new IllegalStateException("Activate exactly one launch profile: dev or prod.");
+        if ((dev ? 1 : 0) + (demo ? 1 : 0) + (prod ? 1 : 0) != 1) {
+            throw new IllegalStateException("Activate exactly one launch profile: dev, demo, or prod.");
         }
         if (dev) {
             validateDevelopmentDatabase(profiles, environment.getProperty("spring.datasource.url", ""));
+        }
+        if (demo) {
+            validateDemoConfiguration(
+                    environment.getProperty("spring.datasource.url", ""),
+                    environment.getProperty("app.jwt.secret", ""),
+                    environment.getProperty("app.cors.allowed-origins", ""));
         }
         if (prod) {
             // The migration integration test targets an isolated loopback PostgreSQL service.
@@ -51,6 +58,38 @@ public class FreelanceAgencyApplication {
         if (devProfile && !datasourceUrl.toLowerCase(Locale.ROOT).startsWith("jdbc:h2:")) {
             throw new IllegalStateException(
                     "The dev profile only supports disposable H2 databases. Use prod for PostgreSQL.");
+        }
+    }
+
+    static void validateDemoConfiguration(String datasourceUrl, String jwtSecret, String corsAllowedOrigins) {
+        if (datasourceUrl == null || !datasourceUrl.trim().toLowerCase(Locale.ROOT).startsWith("jdbc:h2:")) {
+            throw new IllegalStateException("The demo profile only supports an isolated H2 database. Never point it at production data.");
+        }
+        if (jwtSecret != null && !jwtSecret.isBlank() && jwtSecret.length() < 32) {
+            throw new IllegalStateException("JWT_SECRET must be at least 32 characters long.");
+        }
+        if (corsAllowedOrigins == null || corsAllowedOrigins.isBlank()) {
+            throw new IllegalStateException("CORS_ALLOWED_ORIGINS must contain the demo frontend origin.");
+        }
+        for (String origin : corsAllowedOrigins.split(",")) {
+            String normalized = origin.trim();
+            if (normalized.contains("*") || !isHttpsOriginOrLocalhost(normalized)) {
+                throw new IllegalStateException("Demo CORS origins must be exact HTTPS origins (or localhost for local testing).");
+            }
+        }
+    }
+
+    private static boolean isHttpsOriginOrLocalhost(String value) {
+        try {
+            URI uri = URI.create(value);
+            boolean localHttp = "http".equalsIgnoreCase(uri.getScheme())
+                    && Arrays.asList("localhost", "127.0.0.1", "::1").contains(uri.getHost());
+            boolean https = "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null;
+            boolean originOnly = (uri.getRawPath() == null || uri.getRawPath().isEmpty())
+                    && uri.getRawQuery() == null && uri.getRawFragment() == null;
+            return (https || localHttp) && originOnly;
+        } catch (IllegalArgumentException ex) {
+            return false;
         }
     }
 

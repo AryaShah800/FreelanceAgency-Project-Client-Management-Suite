@@ -14,6 +14,10 @@ import java.util.Optional;
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Optional<Invoice> findByInvoiceNumber(String invoiceNumber);
 
+    @EntityGraph(attributePaths = {"project.client.agency"})
+    @Query("SELECT i FROM Invoice i WHERE i.id = :id")
+    Optional<Invoice> findByIdWithProjectOwnership(@Param("id") Long id);
+
     @EntityGraph(attributePaths = {"lineItems"})
     @Query("SELECT i FROM Invoice i WHERE i.project.client.agency.id = :agencyId")
     List<Invoice> findByAgencyId(@Param("agencyId") Long agencyId);

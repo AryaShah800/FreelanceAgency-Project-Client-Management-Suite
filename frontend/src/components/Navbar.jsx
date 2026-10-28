@@ -7,14 +7,14 @@ export default function Navbar({ title, onQuickAction }) {
   const isClient = user?.role === 'CLIENT';
 
   return (
-    <header className="h-16 bg-surface border-b border-border px-6 flex items-center justify-between text-ink sticky top-0 z-40">
-      <div className="flex items-center gap-4">
-        <h2 className="text-lg font-display font-bold text-ink">{title}</h2>
+    <header className="min-h-16 bg-surface border-b border-border px-3 md:px-6 py-3 flex items-center justify-between gap-3 text-ink sticky top-0 z-40">
+      <div className="flex items-center gap-4 min-w-0">
+        <h2 className="text-base md:text-lg font-display font-bold text-ink truncate">{title}</h2>
       </div>
 
-      <div className="flex flex-row items-center gap-4">
-        <div className="text-[11px] font-mono text-ink-muted">
-          Active Session: <span className="text-ink font-semibold">{user?.email}</span>
+      <div className="flex flex-row items-center gap-2 md:gap-4 shrink-0">
+        <div className="max-w-[38vw] md:max-w-none truncate text-right text-[10px] md:text-[11px] font-mono text-ink-muted">
+          <span className="hidden sm:inline">Active Session: </span><span className="text-ink font-semibold">{user?.email}</span>
         </div>
 
         {onQuickAction && (

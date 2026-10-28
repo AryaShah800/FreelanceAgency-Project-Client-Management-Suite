@@ -59,7 +59,10 @@ public class InvoiceService {
             invoices = invoiceRepository.findByAgencyId(userPrincipal.getAgencyId());
         }
 
-        return invoices.stream().map(this::mapToDto).collect(Collectors.toList());
+        return invoices.stream()
+                .filter(invoice -> !isClient || invoice.getStatus() != InvoiceStatus.DRAFT)
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -186,6 +189,17 @@ public class InvoiceService {
             throw new org.springframework.security.access.AccessDeniedException("You cannot update this invoice");
         }
 
+        boolean validTransition = switch (invoice.getStatus()) {
+            case DRAFT -> status == InvoiceStatus.SENT;
+            case SENT -> status == InvoiceStatus.PAID || status == InvoiceStatus.OVERDUE;
+            case OVERDUE -> status == InvoiceStatus.PAID || status == InvoiceStatus.SENT;
+            case PAID -> status == InvoiceStatus.PAID;
+        };
+        if (!validTransition) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Invoice status cannot change from " + invoice.getStatus() + " to " + status);
+        }
+
         invoice.setStatus(status);
         invoice = invoiceRepository.save(invoice);
         return mapToDto(invoice);
@@ -221,7 +235,8 @@ public class InvoiceService {
             throw new org.springframework.security.access.AccessDeniedException("You cannot access this invoice");
         }
         boolean isClient = userPrincipal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
-        if (isClient && !invoice.getProject().getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail())) {
+        if (isClient && (!invoice.getProject().getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail())
+                || invoice.getStatus() == InvoiceStatus.DRAFT)) {
             throw new org.springframework.security.access.AccessDeniedException("You cannot access this invoice");
         }
         return invoice;

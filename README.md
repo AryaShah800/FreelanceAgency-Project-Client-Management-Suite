@@ -74,9 +74,38 @@ The backend runs on `http://localhost:8080` with an in-memory H2 database
 when run with the `dev` profile. On first run it seeds a demo agency,
 users, clients, projects, and a signable demo proposal.
 
-**Demo login (local development only):** `owner@agency.com` / `password123`.
-The dev profile creates sample accounts; never use these credentials or seeded
-data in a production deployment.
+**Local development login:** `owner@agency.com` / `password123`. The dev profile
+seeds sample accounts and must never be used with production data.
+
+### Public recruiter demo without provider keys
+
+For a recruiter walkthrough, deploy a separate backend with
+`SPRING_PROFILES_ACTIVE=demo` and a separate frontend build with
+`VITE_DEMO_ACCESS_ENABLED=true`. The demo backend uses disposable in-memory H2,
+synthetic sample records, a local proposal template instead of Gemini, and no
+Resend or Razorpay credentials. The login page exposes a public demo button, so
+the demo account is intentionally shared. The workspace is writable and changes
+can be seen by other visitors until the demo service restarts; never enter real
+client data. Email flows and real online payments are unavailable in this mode.
+
+Use these public demo credentials only on that isolated demo backend:
+`demo@agency.test` / `DemoAccess2026!`.
+
+For a hosted demo, create a **separate Render Web Service** from the repository
+with root directory `backend`, Dockerfile path `backend/Dockerfile`, and set:
+
+- `SPRING_PROFILES_ACTIVE=demo`
+- Optionally set `JWT_SECRET` to a random private value of at least 32 characters;
+  otherwise the demo backend generates an ephemeral one at startup
+- `CORS_ALLOWED_ORIGINS` to the exact HTTPS origin of the separate demo frontend
+
+Do not set `SPRING_DATASOURCE_URL` on this service; demo startup rejects anything
+except H2. Do not attach the production Neon database. Then create a separate
+Vercel project rooted at `frontend`, pointed at the demo backend. Set
+`VITE_API_BASE_URL=https://<demo-backend-host>/api/v1`, leave `VITE_WS_URL` blank
+so SockJS derives the demo backend host, and set `VITE_DEMO_ACCESS_ENABLED=true`
+plus the demo site's required public metadata. Keep the existing business
+frontend and backend deployment on the `prod` profile.
 
 **H2 console:** `http://localhost:8080/h2-console` (JDBC URL
 `jdbc:h2:mem:freelancedb`, user `sa`, no password).
@@ -97,8 +126,10 @@ Or use `run_app.bat` (Windows) to launch both at once.
 
 See `backend/.env.example` for local development variables and
 `DEPLOYMENT.md` for production requirements. Production requires PostgreSQL,
-HTTPS frontend origins, an owner bootstrap secret, and a configured email sender
-for account invitations and recovery. Payment and AI integrations are optional.
+HTTPS frontend origins, a JWT signing secret, and a configured email sender for
+public signup verification, invitations, and recovery. New agency owners can
+register without a bootstrap or provider API key; provider credentials remain
+private backend configuration. Payment and AI integrations are optional.
 
 | Variable | Required? | Purpose |
 |---|---|---|

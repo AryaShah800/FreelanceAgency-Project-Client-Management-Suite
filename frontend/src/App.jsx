@@ -8,6 +8,7 @@ import { normalizeRole } from './utils/roles';
 
 const namedPage = (name) => lazy(() => import('./pages/PublicInfoPages').then((module) => ({ default: module[name] })));
 const Login = lazy(() => import('./pages/Login.jsx'));
+const Register = lazy(() => import('./pages/Register.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const Clients = lazy(() => import('./pages/Clients.jsx'));
 const Projects = lazy(() => import('./pages/Projects.jsx'));
@@ -17,7 +18,6 @@ const AiGenerator = lazy(() => import('./pages/AiGenerator.jsx'));
 const PublicPortal = lazy(() => import('./pages/PublicPortal.jsx'));
 const ProposalView = lazy(() => import('./pages/ProposalView.jsx'));
 const AgencySettings = lazy(() => import('./pages/AgencySettings.jsx'));
-const SetupOwner = lazy(() => import('./pages/SetupOwner.jsx'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail.jsx'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
@@ -59,9 +59,14 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/" replace />;
   }
   return (
-    <div className="flex min-h-screen bg-paper text-ink font-sans">
+    <div className="flex flex-col md:flex-row min-h-screen bg-paper text-ink font-sans">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
+        {import.meta.env.VITE_DEMO_ACCESS_ENABLED === 'true' && (
+          <div role="status" className="border-b border-brass/30 bg-brass-soft/25 px-4 py-2 text-center text-xs font-medium text-ink-muted">
+            Recruiter demo workspace - shared synthetic data. Avoid entering real client information; changes may be reset. Email, AI-provider, and payment keys are disabled.
+          </div>
+        )}
         {children}
       </div>
     </div>
@@ -85,8 +90,8 @@ export default function App() {
         <Suspense fallback={<RouteLoading />}>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Navigate to="/setup" replace />} />
-          <Route path="/setup" element={<SetupOwner />} />
+          <Route path="/register" element={import.meta.env.VITE_DEMO_ACCESS_ENABLED === 'true' ? <Navigate to="/login" replace /> : <Register />} />
+          <Route path="/setup" element={<Navigate to={import.meta.env.VITE_DEMO_ACCESS_ENABLED === 'true' ? '/login' : '/register'} replace />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

@@ -20,6 +20,7 @@ export default function Tasks() {
   const isOwner = role === 'OWNER';
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [staffMembers, setStaffMembers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [activeTaskForComments, setActiveTaskForComments] = useState(null);
   const [openDropdownId, setOpenDropdownId] = useState(null);
@@ -32,6 +33,7 @@ export default function Tasks() {
 
   const [newTask, setNewTask] = useState({
     projectId: '',
+    assignedToId: '',
     title: '',
     description: '',
     estimatedHours: 1,
@@ -42,6 +44,7 @@ export default function Tasks() {
   useEffect(() => {
     fetchTasks();
     fetchProjects();
+    if (isOwner) fetchStaffMembers();
     fetchActiveTimer();
     setupNetworkAndWebSocket();
 
@@ -148,6 +151,15 @@ export default function Tasks() {
     }
   };
 
+  const fetchStaffMembers = async () => {
+    try {
+      const res = await api.get('/agency/team');
+      setStaffMembers((res.data.members || []).filter((member) => member.enabled && member.role === 'MEMBER'));
+    } catch (err) {
+      console.error('Failed to load staff for task assignment', err);
+    }
+  };
+
   const handleStartTimer = async (taskId) => {
     if (!navigator.onLine) {
       // Offline PWA Queue Fallback
@@ -193,10 +205,15 @@ export default function Tasks() {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/tasks', newTask);
+      await api.post('/tasks', {
+        ...newTask,
+        projectId: Number(newTask.projectId),
+        assignedToId: newTask.assignedToId ? Number(newTask.assignedToId) : null,
+      });
       setShowModal(false);
       setNewTask({
         projectId: projects[0]?.id || '',
+        assignedToId: '',
         title: '',
         description: '',
         estimatedHours: 1,
@@ -437,6 +454,24 @@ export default function Tasks() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-ink-muted font-semibold mb-1" htmlFor="taskAssignee">Assign to staff</label>
+                <select
+                  id="taskAssignee"
+                  value={newTask.assignedToId}
+                  onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
+                  className="w-full bg-paper border border-border text-ink rounded p-2.5 focus:outline-none"
+                >
+                  <option value="">Unassigned</option>
+                  {staffMembers.map((member) => (
+                    <option key={member.id} value={member.id}>{member.name}</option>
+                  ))}
+                </select>
+                {staffMembers.length === 0 && (
+                  <p className="text-[11px] text-ink-muted mt-1">Invite an active staff member from Team settings to assign this task.</p>
+                )}
               </div>
 
               <div>

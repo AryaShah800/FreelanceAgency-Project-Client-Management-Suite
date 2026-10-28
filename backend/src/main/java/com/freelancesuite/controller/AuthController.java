@@ -2,7 +2,6 @@ package com.freelancesuite.controller;
 
 import com.freelancesuite.dto.AuthResponse;
 import com.freelancesuite.dto.LoginRequest;
-import com.freelancesuite.dto.RegisterRequest;
 import com.freelancesuite.dto.UserDto;
 import com.freelancesuite.dto.*;
 import com.freelancesuite.security.UserPrincipal;
@@ -14,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 @RestController
@@ -33,8 +33,10 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request));
+    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequest request,
+                                                         HttpServletRequest httpRequest) {
+        accountLifecycleService.registerAgencyOwner(request, httpRequest.getRemoteAddr());
+        return ResponseEntity.accepted().body(Map.of("message", "Account created. Check your email to verify your address before signing in."));
     }
 
     @PostMapping("/bootstrap-owner")

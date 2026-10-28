@@ -3,11 +3,16 @@ package com.freelancesuite.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Date;
 
 @Component
@@ -19,8 +24,17 @@ public class JwtTokenProvider {
     @Value("${app.jwt.expiration-ms}")
     private long jwtExpirationMs;
 
+    @Autowired
+    private Environment environment;
+
     @jakarta.annotation.PostConstruct
     public void init() {
+        if ((jwtSecret == null || jwtSecret.isBlank())
+                && Arrays.asList(environment.getActiveProfiles()).contains("demo")) {
+            byte[] ephemeralKey = new byte[48];
+            new SecureRandom().nextBytes(ephemeralKey);
+            jwtSecret = Base64.getUrlEncoder().withoutPadding().encodeToString(ephemeralKey);
+        }
         if (jwtSecret == null || jwtSecret.length() < 32) {
             throw new IllegalStateException("JWT_SECRET environment variable is missing or less than 32 characters long. Failing startup.");
         }

@@ -56,9 +56,7 @@ public class PaymentService {
     public Map<String, Object> createRazorpayOrder(Long invoiceId, UserPrincipal userPrincipal) {
         ensureConfigured();
         Invoice invoice = requireClientInvoice(invoiceId, userPrincipal);
-        if (invoice.getStatus() == InvoiceStatus.PAID) {
-            throw new IllegalArgumentException("This invoice has already been paid");
-        }
+        requirePayableInvoice(invoice);
         BigDecimal total = invoice.getTotalAmount();
         long amountInPaise = total.multiply(BigDecimal.valueOf(100)).longValueExact();
 
@@ -104,10 +102,7 @@ public class PaymentService {
     public Payment verifyAndRecordPayment(PaymentVerificationRequest request, UserPrincipal userPrincipal) {
         ensureConfigured();
         Invoice invoice = requireClientInvoice(request.getInvoiceId(), userPrincipal);
-
-        if (invoice.getStatus() == InvoiceStatus.PAID) {
-            throw new IllegalArgumentException("This invoice has already been paid");
-        }
+        requirePayableInvoice(invoice);
         String payload = request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId();
         if (!HmacSignatureUtil.verify(payload, razorpayKeySecret, request.getRazorpaySignature())) {
             throw new IllegalArgumentException("Payment signature verification failed");
@@ -219,7 +214,7 @@ public class PaymentService {
     }
 
     private Invoice requireClientInvoice(Long invoiceId, UserPrincipal userPrincipal) {
-        Invoice invoice = invoiceRepository.findById(invoiceId)
+        Invoice invoice = invoiceRepository.findByIdWithProjectOwnership(invoiceId)
                 .orElseThrow(() -> new IllegalArgumentException("Invoice not found"));
 
         if (!invoice.getProject().getClient().getAgency().getId().equals(userPrincipal.getAgencyId())) {
@@ -232,6 +227,14 @@ public class PaymentService {
         }
 
         return invoice;
+    }
+
+    private void requirePayableInvoice(Invoice invoice) {
+        if (invoice.getStatus() != InvoiceStatus.SENT && invoice.getStatus() != InvoiceStatus.OVERDUE) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Only sent or overdue invoices can be paid");
+        }
     }
 
     private void ensureConfigured() {

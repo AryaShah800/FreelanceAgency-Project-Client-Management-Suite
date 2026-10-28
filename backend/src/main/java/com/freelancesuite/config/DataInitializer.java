@@ -12,11 +12,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Arrays;
 
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 
 @Component
-@Profile("dev")
+@Profile("dev | demo")
 public class DataInitializer implements CommandLineRunner {
 
     private final AgencyRepository agencies; private final AppUserRepository users; private final ClientRepository clients;
@@ -25,14 +27,17 @@ public class DataInitializer implements CommandLineRunner {
     private final ProposalRepository proposals;
     private final PlatformStateRepository platformStateRepository;
     private final PasswordEncoder passwordEncoder;
+    private final boolean demoProfile;
 
     public DataInitializer(AgencyRepository agencies, AppUserRepository users, ClientRepository clients, ProjectRepository projects,
                            TaskRepository tasks, TaskCommentRepository comments, TimeEntryRepository timeEntries,
                            InvoiceRepository invoices, PaymentRepository payments, ProposalRepository proposals,
-                           PlatformStateRepository platformStateRepository, PasswordEncoder passwordEncoder) {
+                           PlatformStateRepository platformStateRepository, PasswordEncoder passwordEncoder,
+                           Environment environment) {
         this.agencies = agencies; this.users = users; this.clients = clients; this.projects = projects; this.tasks = tasks;
         this.comments = comments; this.timeEntries = timeEntries; this.invoices = invoices; this.payments = payments;
         this.proposals = proposals; this.platformStateRepository = platformStateRepository; this.passwordEncoder = passwordEncoder;
+        this.demoProfile = Arrays.asList(environment.getActiveProfiles()).contains("demo");
     }
 
     @Override @Transactional
@@ -41,9 +46,9 @@ public class DataInitializer implements CommandLineRunner {
 
         platformStateRepository.save(new PlatformState(1, true));
 
-        String pass = passwordEncoder.encode("password123");
+        String pass = passwordEncoder.encode(demoProfile ? "DemoAccess2026!" : "password123");
         Agency agency = agencies.save(Agency.builder()
-                .name("Apex Digital Solutions")
+                .name(demoProfile ? "Freelance Suite Demo" : "Apex Digital Solutions")
                 .gstin("27AAACA0000A1Z5")
                 .pan("AAACA0000A")
                 .registeredAddress("301 Techno Tower, Andheri East, Mumbai 400069, Maharashtra")
@@ -53,13 +58,18 @@ public class DataInitializer implements CommandLineRunner {
                 .bankIfsc("HDFC0000001")
                 .build());
 
-        AppUser alex = user("Alex Mercer", "owner@agency.com", Role.OWNER, 200.0, agency, pass);
-        AppUser arya = user("Arya Shah", "aryashah873@gmail.com", Role.OWNER, 200.0, agency, pass);
-        AppUser priya = user("Priya Sharma", "priya@agency.com", Role.MEMBER, 150.0, agency, pass);
-        AppUser daniel = user("Daniel Kim", "daniel@agency.com", Role.MEMBER, 125.0, agency, pass);
-        AppUser sarah = user("Sarah Jenkins", "sarah@fintech.io", Role.CLIENT, 0.0, agency, pass);
+        AppUser alex = user(demoProfile ? "Demo Owner" : "Alex Mercer",
+                demoProfile ? "demo@agency.test" : "owner@agency.com", Role.OWNER, 200.0, agency, pass);
+        if (!demoProfile) user("Arya Shah", "aryashah873@gmail.com", Role.OWNER, 200.0, agency, pass);
+        AppUser priya = user(demoProfile ? "Demo Staff One" : "Priya Sharma",
+                demoProfile ? "staff-one@agency.test" : "priya@agency.com", Role.MEMBER, 150.0, agency, pass);
+        AppUser daniel = user(demoProfile ? "Demo Staff Two" : "Daniel Kim",
+                demoProfile ? "staff-two@agency.test" : "daniel@agency.com", Role.MEMBER, 125.0, agency, pass);
+        String clientEmail = demoProfile ? "client@agency.test" : "sarah@fintech.io";
+        String clientContact = demoProfile ? "Taylor Client" : "Sarah Jenkins";
+        AppUser sarah = user(clientContact, clientEmail, Role.CLIENT, 0.0, agency, pass);
 
-        Client fintech = client("FinTech Innovations", "Sarah Jenkins", "sarah@fintech.io", "+1-555-0192",
+        Client fintech = client("FinTech Innovations", clientContact, clientEmail, "+1-555-0192",
                 "27BBBCC1111B1Z2", "BBBCC1111B", "Unit 5A, BKC Complex, Mumbai 400051, Maharashtra", "27", DealStage.WON, agency);
         Client retail = client("OmniRetail Group", "Marcus Vance", "marcus@omniretail.com", "+1-555-0144",
                 "29CCCDD2222C1Z3", "CCCDD2222C", "42 MG Road, Bengaluru 560001, Karnataka", "29", DealStage.PROPOSAL_SENT, agency);

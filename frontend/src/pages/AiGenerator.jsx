@@ -497,7 +497,7 @@ export default function AiGenerator() {
         clientEmail: formData.clientEmail.trim(),
         projectScope: formData.projectScope,
         deliverables: formData.deliverables,
-        paymentTerms: paymentTerms || formData.paymentTerms,
+        paymentTerms: formData.paymentTerms,
         totalBudget: results.grandTotal,
         documentHtml,
         paymentMilestonesJson: JSON.stringify(finalMilestones)

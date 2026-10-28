@@ -55,11 +55,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       const response = await api.post('/auth/register', formData);
-      const data = response.data;
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data));
-      setUser(data);
-      return data;
+      return response.data;
     } finally {
       setLoading(false);
     }

@@ -10,7 +10,8 @@ CI also applies the full migration chain and validates the Hibernate mappings
 against an isolated PostgreSQL 16 service. The configured Neon staging database
 currently reports PostgreSQL 18.6, so keep staging and production aligned before
 the final populated-data restore drill.
-The app requires exactly one active profile (`dev` locally or `prod` when deployed).
+The app requires exactly one active profile (`dev` locally, `demo` for an isolated
+public recruiter sandbox, or `prod` for real agency data).
 The CI-only `migration-test` profile permits plaintext connections only to its
 loopback PostgreSQL service; normal production startup still requires PostgreSQL
 TLS (`sslmode=require`, `verify-ca`, or `verify-full`).
@@ -55,6 +56,25 @@ frontend host (they are public metadata, never secret credentials):
 | `VITE_PLAUSIBLE_DOMAIN` / `VITE_PLAUSIBLE_SCRIPT_URL` | Optional Plausible site; use the manual-pageview script variant |
 | `VITE_SENTRY_LOADER_URL` | Optional public Sentry browser loader URL (not an auth token) |
 
+## Isolated recruiter demo (no provider API keys)
+
+Use a separate Render service and Vercel project for the public demo. Set the
+backend profile to `demo`; `JWT_SECRET` is optional in this profile, and if blank
+the service generates an ephemeral signing secret on startup. Set
+`CORS_ALLOWED_ORIGINS` to the demo frontend's exact HTTPS origin. Do not
+set a database URL: the demo profile requires an in-memory H2 database and refuses
+PostgreSQL, including Neon. It seeds synthetic records and resets them when the
+service restarts. The demo login is public and shared; its workspace is writable,
+so visitors must not enter real customer data.
+
+Set `VITE_DEMO_ACCESS_ENABLED=true` only in the separate demo frontend build. The
+business frontend must leave it false. The demo uses the built-in local proposal
+template without Gemini, keeps Resend email delivery disabled, and keeps Razorpay
+checkout disabled. No third-party provider API keys are needed by recruiters.
+If you provide `JWT_SECRET`, keep it private; it is never exposed to the browser.
+When auto-generated, tokens are invalidated after each service restart. See the
+README for the public demo login and host setup values.
+
 `GEMINI_API_KEY` and the Razorpay key pair are optional integrations. AI drafting
 uses the built-in template when Gemini is disabled. Payment endpoints return
 `503 Service Unavailable` until the Razorpay key pair and webhook signing secret
@@ -63,11 +83,18 @@ webhook secret is missing/short. The webhook secret is separate from the Razorpa
 API secret.
 
 Configure the sending domain in Resend (including DNS authentication) before
-inviting users. Leave public registration disabled; create the first agency
-owner through the one-time setup page using `OWNER_BOOTSTRAP_SECRET`. Then
-remove/rotate that bootstrap secret. Owners invite Admin or Staff from Team
-Settings. Invite links expire in 7 days, email verification links in 24 hours,
-and password reset links in 1 hour. These links are single-use.
+opening public signup. Anyone can create an agency account without supplying
+provider API keys; the backend sends a 24-hour email verification link and does
+not allow sign-in until the address is verified. Public signup is limited to 10
+attempts per client address per hour on each backend instance. Owners can still
+invite Admin or Staff from Team Settings. Invite links expire in 7 days and
+password reset links in 1 hour. These links are single-use.
+
+`OWNER_BOOTSTRAP_SECRET` remains only for the optional installation bootstrap
+endpoint and is not needed for ordinary public signup. Keep it unset unless you
+are using that manual bootstrap flow. JWT signing, database access, and email
+provider credentials remain backend deployment secrets; no agency user enters
+or receives them.
 
 In-app login, AI, and PDF throttles use bounded caches per backend process.
 Before public launch, configure gateway rate limits for login/bootstrap, public

@@ -14,8 +14,7 @@ import {
   AlertTriangle,
   Flame,
   Activity,
-  History,
-  ExternalLink
+  History
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -132,17 +131,6 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            {!isClient && (
-              <a
-                href="/portal/share/demo-proposal-token-2026"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 bg-paper hover:bg-ink/5 border border-border text-ink text-xs font-semibold px-4 py-2.5 rounded-full transition-all"
-              >
-                <ExternalLink className="w-3.5 h-3.5 text-brass-dark" />
-                Demo Public Portal Share
-              </a>
-            )}
             {!isClient ? (
               <Link
                 to="/ai-generator"

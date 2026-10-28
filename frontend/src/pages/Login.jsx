@@ -10,6 +10,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const demoAccessEnabled = import.meta.env.VITE_DEMO_ACCESS_ENABLED === 'true';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,6 +21,17 @@ export default function Login() {
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid credentials');
+    }
+  };
+
+  const handleDemoAccess = async () => {
+    setError('');
+    try {
+      await login('demo@agency.test', 'DemoAccess2026!');
+      trackEvent('Demo login completed');
+      navigate('/');
+    } catch (err) {
+      setError(err.response?.data?.message || 'The demo workspace is temporarily unavailable. Please try again shortly.');
     }
   };
 
@@ -85,11 +97,29 @@ export default function Login() {
           </button>
         </form>
 
+        {demoAccessEnabled && (
+          <div className="mt-5 border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={handleDemoAccess}
+              disabled={loading}
+              className="w-full bg-forest hover:bg-forest/90 disabled:opacity-60 text-white font-semibold py-2.5 rounded-full shadow-sm flex items-center justify-center gap-2 transition-all text-sm"
+            >
+              {loading ? 'Opening demo workspace...' : 'Try the recruiter demo'}
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <p className="mt-2 text-center text-[11px] leading-5 text-ink-muted">
+              Shared sample workspace. Use fictional data only; demo changes may be reset. Email, AI-provider, and payment keys are not needed.
+            </p>
+          </div>
+        )}
+
         <div className="mt-6 flex flex-col gap-2 text-center text-xs text-ink-muted">
           <Link to="/forgot-password" className="text-brass-dark font-semibold hover:underline">Forgot password?</Link>
           <Link to="/verify-email" className="text-brass-dark font-semibold hover:underline">Need an email verification link?</Link>
-          <Link to="/setup" className="mt-2 text-ink-faint hover:text-ink">First time setting up this installation?</Link>
-          <span>Agency accounts are invitation-only.</span>
+          {demoAccessEnabled
+            ? <span>Use the shared sample workspace above. No personal API keys are needed.</span>
+            : <Link to="/register" className="mt-2 text-brass-dark font-semibold hover:underline">Create a new agency account</Link>}
         </div>
       </div>
       <footer className="absolute bottom-4 left-0 right-0 z-10 flex justify-center gap-5 px-4 text-xs text-ink-muted">

@@ -7,6 +7,8 @@ import com.freelancesuite.entity.enums.Role;
 import com.freelancesuite.repository.*;
 import com.freelancesuite.security.UserPrincipal;
 import com.freelancesuite.util.Sha256Util;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -19,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
@@ -36,6 +39,11 @@ public class AccountLifecycleService {
     private final PasswordEncoder passwordEncoder;
     private final EmailDeliveryService emailDelivery;
     @Value("${app.bootstrap.secret:}") private String bootstrapSecret;
+    private final Cache<String, Integer> registrationAttempts = Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterWrite(Duration.ofHours(1))
+            .build();
+    private static final int MAX_REGISTRATIONS_PER_IP_PER_HOUR = 10;
 
     public AccountLifecycleService(AgencyRepository agencyRepository, AppUserRepository userRepository,
                                    AccountActionTokenRepository actionTokenRepository,
@@ -71,6 +79,39 @@ public class AccountLifecycleService {
         state.setBootstrapCompleted(true);
         issueActionToken(owner, AccountTokenPurpose.EMAIL_VERIFICATION, LocalDateTime.now().plusHours(24),
                 "/verify-email", "Verify your email address", "Verify your email within 24 hours to activate the owner account.");
+    }
+
+    @Transactional
+    public void registerAgencyOwner(RegisterRequest request, String clientAddress) {
+        String rateLimitKey = clientAddress == null || clientAddress.isBlank() ? "unknown" : clientAddress;
+        int attempts = registrationAttempts.asMap().merge(rateLimitKey, 1, Integer::sum);
+        if (attempts > MAX_REGISTRATIONS_PER_IP_PER_HOUR) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many account creation attempts. Try again later.");
+        }
+
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmail(email)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "An account with this email already exists.");
+        }
+        ensurePasswordLength(request.getPassword());
+
+        String gstin = request.getGstin() == null || request.getGstin().isBlank()
+                ? null : request.getGstin().trim().toUpperCase(Locale.ROOT);
+        Agency agency = agencyRepository.save(Agency.builder()
+                .name(request.getAgencyName().trim())
+                .gstin(gstin)
+                .subscriptionPlan("FREE")
+                .build());
+        agency.setGstRegistered(gstin != null);
+
+        AppUser owner = AppUser.builder().agency(agency).name(request.getOwnerName().trim()).email(email)
+                .passwordHash(passwordEncoder.encode(request.getPassword())).role(Role.OWNER).build();
+        owner.setEmailVerified(false);
+        userRepository.save(owner);
+        issueActionToken(owner, AccountTokenPurpose.EMAIL_VERIFICATION, LocalDateTime.now().plusHours(24),
+                "/verify-email", "Verify your email address",
+                "Verify your email within 24 hours to activate your agency account.");
     }
 
     @Transactional

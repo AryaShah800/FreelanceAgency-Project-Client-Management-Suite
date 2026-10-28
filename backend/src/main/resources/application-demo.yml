@@ -1,0 +1,37 @@
+spring:
+  datasource:
+    # Demo runs on disposable in-memory data and must never connect to a real agency DB.
+    url: jdbc:h2:mem:freelancedemo;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  flyway:
+    enabled: false
+
+app:
+  jwt:
+    # JWTTokenProvider generates an ephemeral random signing secret if this is blank.
+    secret: ${JWT_SECRET:}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+  email:
+    # Account email actions return a clear unavailable response; no token links are logged.
+    delivery-mode: disabled
+    resend-api-key: ''
+    resend-from: ''
+  gemini:
+    # The proposal service uses its local template when this key is blank.
+    api-key: ''
+  razorpay:
+    # Never create real payment orders from the public demo workspace.
+    key-id: ''
+    key-secret: ''
+    webhook-secret: ''
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

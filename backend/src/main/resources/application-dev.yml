@@ -27,8 +27,7 @@ app:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   gemini:
-    # No fallback default on purpose: a checked-in API key is billable-abuse
-    # risk the moment this repo is public. Set GEMINI_API_KEY in backend/.env.
+    # Optional. Without a provider key, AIService returns its local proposal template.
     api-key: ${GEMINI_API_KEY:}
     api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent}
   razorpay:

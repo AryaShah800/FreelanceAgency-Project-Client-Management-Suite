@@ -88,11 +88,14 @@ class ApiWorkflowIntegrationTest {
 
     @Test
     void registrationLoginAndCurrentUserWork() throws Exception {
+        String newOwnerEmail = "new-owner-" + UUID.randomUUID().toString().substring(0, 8) + "@example.test";
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("agencyName", "Auth Agency", "ownerName", "Auth Owner",
-                                "email", "new-owner@example.test", "password", "StrongPass123!"))))
-                .andExpect(status().isGone());
+                                "email", newOwnerEmail, "password", "StrongPass123!"))))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Check your email")));
+        assertEquals(false, userRepository.findByEmail(newOwnerEmail).orElseThrow().isEmailVerified());
 
         Account account = registerAgency("Auth");
 
@@ -187,6 +190,41 @@ class ApiWorkflowIntegrationTest {
         mockMvc.perform(get("/api/v1/invoices/{id}/pdf", invoiceId).header("Authorization", auth))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/pdf"));
+    }
+
+    @Test
+    void draftInvoicesStayPrivateUntilSentAndCannotBePaidEarly() throws Exception {
+        Account owner = registerAgency("InvoiceLifecycle");
+        String clientEmail = "invoice-client-" + UUID.randomUUID().toString().substring(0, 8) + "@example.test";
+        long clientId = createClient(owner.bearer(), clientEmail);
+        long projectId = createProject(owner.bearer(), clientId);
+        MvcResult created = mockMvc.perform(post("/api/v1/invoices")
+                        .header("Authorization", owner.bearer()).contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("projectId", projectId, "lineItems", List.of(Map.of(
+                                "description", "Synthetic test work", "quantity", 1, "unitPrice", 1000))))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT")).andReturn();
+        long invoiceId = body(created).get("id").asLong();
+        Account client = createAgencyUserWithEmail(owner, Role.CLIENT, clientEmail, "Invoice Client");
+
+        mockMvc.perform(get("/api/v1/invoices").header("Authorization", client.bearer()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(0)));
+        mockMvc.perform(get("/api/v1/invoices/{id}", invoiceId).header("Authorization", client.bearer()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/invoices/{id}/pdf", invoiceId).header("Authorization", client.bearer()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/payments/razorpay/create-order").param("invoiceId", Long.toString(invoiceId))
+                        .header("Authorization", client.bearer()))
+                .andExpect(status().isServiceUnavailable());
+        mockMvc.perform(patch("/api/v1/invoices/{id}/status", invoiceId).param("status", "PAID")
+                        .header("Authorization", owner.bearer()))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(patch("/api/v1/invoices/{id}/status", invoiceId).param("status", "SENT")
+                        .header("Authorization", owner.bearer()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SENT"));
+        mockMvc.perform(get("/api/v1/invoices").header("Authorization", client.bearer()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].status").value("SENT"));
     }
 
     @Test
@@ -337,6 +375,19 @@ class ApiWorkflowIntegrationTest {
     private Account createAgencyUser(Agency agency, Role role, String prefix) throws Exception {
         String email = prefix + "-" + UUID.randomUUID().toString().substring(0, 8) + "@example.test";
         AppUser user = AppUser.builder().agency(agency).name(prefix).email(email)
+                .passwordHash(passwordEncoder.encode("StrongPass123!")).role(role).build();
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("email", email, "password", "StrongPass123!"))))
+                .andExpect(status().isOk()).andReturn();
+        return new Account(email, body(result).get("token").asText(), body(result).get("userId").asLong());
+    }
+
+    private Account createAgencyUserWithEmail(Account owner, Role role, String email, String name) throws Exception {
+        AppUser ownerUser = userRepository.findById(owner.userId()).orElseThrow();
+        AppUser user = AppUser.builder().agency(ownerUser.getAgency()).name(name).email(email)
                 .passwordHash(passwordEncoder.encode("StrongPass123!")).role(role).build();
         user.setEmailVerified(true);
         userRepository.save(user);

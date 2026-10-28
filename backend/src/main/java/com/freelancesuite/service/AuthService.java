@@ -10,6 +10,7 @@ import com.freelancesuite.security.UserPrincipal;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -28,6 +29,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
+    private final boolean demoProfile;
 
     // Keep account-level lockout state bounded when attackers submit random emails.
     private final Cache<String, FailedLoginState> failedLogins = Caffeine.newBuilder()
@@ -38,16 +40,13 @@ public class AuthService {
     private static final long LOGIN_BLOCK_MS = 15 * 60 * 1000; // 15 minutes
 
     @Autowired
-    public AuthService(AgencyRepository agencyRepository, AppUserRepository userRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, JwtTokenProvider tokenProvider) {
+    public AuthService(AgencyRepository agencyRepository, AppUserRepository userRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, JwtTokenProvider tokenProvider, Environment environment) {
         this.agencyRepository = agencyRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.tokenProvider = tokenProvider;
-    }
-
-    public AuthResponse register(com.freelancesuite.dto.RegisterRequest ignored) {
-        throw new ResponseStatusException(HttpStatus.GONE, "Public registration is closed. Ask an agency owner for an invitation.");
+        this.demoProfile = java.util.Arrays.asList(environment.getActiveProfiles()).contains("demo");
     }
 
     @Transactional(readOnly = true)
@@ -55,14 +54,19 @@ public class AuthService {
         String email = normalizeEmail(request.getEmail());
         request.setEmail(email);
         long now = System.currentTimeMillis();
+        // The public demo has one intentionally shared account. Account-wide
+        // lockout would let any visitor block every other recruiter.
+        boolean sharedDemoAccount = demoProfile && "demo@agency.test".equals(email);
 
-        FailedLoginState failedLogin = failedLogins.getIfPresent(email);
-        if (failedLogin != null && now - failedLogin.lastFailureAtMillis() < LOGIN_BLOCK_MS) {
-            if (failedLogin.attempts() >= MAX_LOGIN_ATTEMPTS) {
-                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Account locked due to too many failed attempts. Try again in 15 minutes.");
+        if (!sharedDemoAccount) {
+            FailedLoginState failedLogin = failedLogins.getIfPresent(email);
+            if (failedLogin != null && now - failedLogin.lastFailureAtMillis() < LOGIN_BLOCK_MS) {
+                if (failedLogin.attempts() >= MAX_LOGIN_ATTEMPTS) {
+                    throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Account locked due to too many failed attempts. Try again in 15 minutes.");
+                }
+            } else if (failedLogin != null) {
+                failedLogins.invalidate(email);
             }
-        } else if (failedLogin != null) {
-            failedLogins.invalidate(email);
         }
 
         Authentication authentication;
@@ -71,14 +75,16 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
             // Success - reset attempts
-            failedLogins.invalidate(email);
+            if (!sharedDemoAccount) failedLogins.invalidate(email);
         } catch (org.springframework.security.core.AuthenticationException ex) {
-            failedLogins.asMap().compute(email, (key, current) -> {
-                if (current == null || now - current.lastFailureAtMillis() >= LOGIN_BLOCK_MS) {
-                    return new FailedLoginState(1, now);
-                }
-                return new FailedLoginState(current.attempts() + 1, now);
-            });
+            if (!sharedDemoAccount) {
+                failedLogins.asMap().compute(email, (key, current) -> {
+                    if (current == null || now - current.lastFailureAtMillis() >= LOGIN_BLOCK_MS) {
+                        return new FailedLoginState(1, now);
+                    }
+                    return new FailedLoginState(current.attempts() + 1, now);
+                });
+            }
             throw ex;
         }
 

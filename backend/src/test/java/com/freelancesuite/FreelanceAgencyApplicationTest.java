@@ -20,6 +20,23 @@ class FreelanceAgencyApplicationTest {
     }
 
     @Test
+    void demoProfileRequiresOnlyIsolatedH2JwtSecretAndSpecificCorsOrigins() {
+        assertDoesNotThrow(() -> FreelanceAgencyApplication.validateDemoConfiguration(
+                "jdbc:h2:mem:demo;MODE=PostgreSQL",
+                "",
+                "https://demo.example.test,http://localhost:5173"));
+        assertThrows(IllegalStateException.class, () -> FreelanceAgencyApplication.validateDemoConfiguration(
+                DATABASE_URL,
+                "demo-jwt-secret-that-is-at-least-32-characters-long",
+                "https://demo.example.test"));
+        assertThrows(IllegalStateException.class, () -> FreelanceAgencyApplication.validateDemoConfiguration(
+                "jdbc:h2:mem:demo;MODE=PostgreSQL", "short", "https://demo.example.test"));
+        assertThrows(IllegalStateException.class, () -> FreelanceAgencyApplication.validateDemoConfiguration(
+                "jdbc:h2:mem:demo;MODE=PostgreSQL",
+                "", "*"));
+    }
+
+    @Test
     void prodProfileRejectsMissingOrInsecureLaunchSettings() {
         assertThrows(IllegalStateException.class, () -> FreelanceAgencyApplication.validateProductionConfiguration(
                 DATABASE_URL, "valid-jwt-secret-that-is-at-least-32-characters", "", "", "resend-key", "sender@example.test"));
@@ -92,6 +109,9 @@ class FreelanceAgencyApplicationTest {
         assertThrows(IllegalStateException.class,
                 () -> FreelanceAgencyApplication.validateLaunchConfiguration(environment));
         environment.setActiveProfiles("dev", "prod");
+        assertThrows(IllegalStateException.class,
+                () -> FreelanceAgencyApplication.validateLaunchConfiguration(environment));
+        environment.setActiveProfiles("demo", "prod");
         assertThrows(IllegalStateException.class,
                 () -> FreelanceAgencyApplication.validateLaunchConfiguration(environment));
     }

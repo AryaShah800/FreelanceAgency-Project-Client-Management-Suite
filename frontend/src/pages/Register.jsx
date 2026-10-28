@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Building2, Lock, Mail, User, ShieldCheck, ArrowRight } from 'lucide-react';
 
@@ -12,8 +12,8 @@ export default function Register() {
     password: '',
   });
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const { register, loading } = useAuth();
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -22,9 +22,10 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     try {
-      await register(formData);
-      navigate('/');
+      const result = await register(formData);
+      setMessage(result.message || 'Account created. Check your email to verify your address before signing in.');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
     }
@@ -41,12 +42,18 @@ export default function Register() {
             <Building2 className="w-6 h-6 text-surface" />
           </div>
           <h2 className="font-display text-2xl font-bold text-ink tracking-tight">Create Agency Account</h2>
-          <p className="text-ink-muted text-xs font-sans">Set up your warm-themed paper ledger portal</p>
+          <p className="text-ink-muted text-xs font-sans">Create an agency workspace. No provider API keys required.</p>
         </div>
 
         {error && (
           <div className="mb-4 p-3 rounded bg-rust-soft/50 border border-rust/20 text-rust text-xs font-semibold">
             {error}
+          </div>
+        )}
+
+        {message && (
+          <div role="status" className="mb-4 rounded border border-forest/30 bg-forest-soft p-3 text-xs font-semibold text-forest">
+            {message} <Link to="/verify-email" className="underline">Request another verification link</Link>
           </div>
         )}
 
@@ -117,13 +124,15 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink-muted mb-1">Password</label>
+            <label className="block text-xs font-semibold text-ink-muted mb-1">Password (12 characters minimum)</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-ink-faint absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="password"
                 name="password"
                 required
+                minLength={12}
+                maxLength={72}
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
@@ -137,7 +146,7 @@ export default function Register() {
             disabled={loading}
             className="w-full mt-4 bg-brass hover:bg-brass-dark text-white font-semibold py-2.5 rounded-full shadow-sm flex items-center justify-center gap-2 transition-all text-sm"
           >
-            {loading ? 'Creating Account...' : 'Initialize Agency Suite'}
+            {loading ? 'Creating Account...' : 'Create agency account'}
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>

@@ -163,12 +163,12 @@ export default function Invoices() {
     }
   };
 
-  const handleMarkPaid = async (id) => {
+  const handleUpdateStatus = async (id, status) => {
     try {
-      await api.patch(`/invoices/${id}/status?status=PAID`);
+      await api.patch(`/invoices/${id}/status?status=${status}`);
       fetchInvoices();
     } catch (err) {
-      console.error(err);
+      alert(err.response?.data?.message || `Unable to mark invoice ${status.toLowerCase()}`);
     }
   };
 
@@ -253,7 +253,7 @@ export default function Invoices() {
                         </span>
                       </td>
                       <td className="py-4 text-right pr-2 space-x-2">
-                        {isClient && inv.status !== 'PAID' ? (
+                        {isClient && ['SENT', 'OVERDUE'].includes(inv.status) ? (
                           <button
                             onClick={() => handleRazorpayPayment(inv)}
                             disabled={payingInvoiceId === inv.id}
@@ -262,9 +262,16 @@ export default function Invoices() {
                             <CreditCard className="w-3.5 h-3.5" />
                             {payingInvoiceId === inv.id ? 'Processing...' : 'Pay Online'}
                           </button>
-                        ) : isOwner && inv.status !== 'PAID' ? (
+                        ) : isOwner && inv.status === 'DRAFT' ? (
                           <button
-                            onClick={() => handleMarkPaid(inv.id)}
+                            onClick={() => handleUpdateStatus(inv.id, 'SENT')}
+                            className="px-2.5 py-1 bg-brass-soft hover:bg-brass/20 text-brass-dark border border-brass/20 rounded text-[11px] font-semibold transition-colors"
+                          >
+                            Mark Sent
+                          </button>
+                        ) : isOwner && ['SENT', 'OVERDUE'].includes(inv.status) ? (
+                          <button
+                            onClick={() => handleUpdateStatus(inv.id, 'PAID')}
                             className="px-2.5 py-1 bg-forest-soft hover:bg-forest/20 text-forest border border-forest/20 rounded text-[11px] font-semibold transition-colors"
                           >
                             Mark Paid
