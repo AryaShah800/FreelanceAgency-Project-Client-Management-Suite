@@ -1,5 +1,9 @@
 # Freelance Agency Suite — Client Management & Ops Platform
 
+[![CI](https://github.com/AryaShah800/FreelanceAgency-Project-Client-Management-Suite/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/AryaShah800/FreelanceAgency-Project-Client-Management-Suite/actions/workflows/ci-cd.yml)
+
+**[Live demo](https://freelance-agency-suite-z19w-kappa.vercel.app)** · Java 21 · Spring Boot · React · PostgreSQL
+
 A full-stack agency management suite: CRM pipeline, project/task tracking with
 live comments, GST-compliant invoicing with a Razorpay checkout, AI-drafted
 proposals, and a token-based public client portal for reviewing proposals,
@@ -190,3 +194,7 @@ Review these product limitations before selling or onboarding an agency:
   legally binding e-signature service without jurisdiction-specific review.
 - Single-database, single-region; no queueing/retry layer for the Gemini or
   Razorpay API calls beyond what the HTTP client itself does.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
