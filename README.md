@@ -2,6 +2,10 @@
 
 The [contract-drafting evaluation](docs/CONTRACT_EVALUATION.md) compares versioned prompts on 30 synthetic cases each: v2 has 30/30 structural and clause coverage and 18/30 passing every strict check. Generated drafts that omit supplied commercial facts are rejected in favor of an explicitly labeled local template. See [measured results](eval/REPORT.md); these checks do not establish legal adequacy.
 
+[![CI](https://github.com/AryaShah800/FreelanceAgency-Project-Client-Management-Suite/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/AryaShah800/FreelanceAgency-Project-Client-Management-Suite/actions/workflows/ci-cd.yml)
+
+**[Live demo](https://freelance-agency-suite-z19w-kappa.vercel.app)** · Java 21 · Spring Boot · React · PostgreSQL
+
 A full-stack agency management suite: CRM pipeline, project/task tracking with
 live comments, GST-compliant invoicing with a Razorpay checkout, AI-drafted
 proposals, and a token-based public client portal for reviewing proposals,
@@ -192,3 +196,7 @@ Review these product limitations before selling or onboarding an agency:
   legally binding e-signature service without jurisdiction-specific review.
 - Single-database, single-region; no queueing/retry layer for the Gemini or
   Razorpay API calls beyond what the HTTP client itself does.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
