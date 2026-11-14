@@ -1,5 +1,7 @@
 # Freelance Agency Suite — Client Management & Ops Platform
 
+The [contract-drafting evaluation](docs/CONTRACT_EVALUATION.md) compares versioned prompts on 30 synthetic cases each: v2 has 30/30 structural and clause coverage and 18/30 passing every strict check. Generated drafts that omit supplied commercial facts are rejected in favor of an explicitly labeled local template. See [measured results](eval/REPORT.md); these checks do not establish legal adequacy.
+
 A full-stack agency management suite: CRM pipeline, project/task tracking with
 live comments, GST-compliant invoicing with a Razorpay checkout, AI-drafted
 proposals, and a token-based public client portal for reviewing proposals,
