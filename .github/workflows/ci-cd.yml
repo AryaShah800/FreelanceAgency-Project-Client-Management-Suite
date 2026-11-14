@@ -26,6 +26,23 @@ jobs:
         run: mvn -B -ntp verify
         working-directory: backend
 
+      - name: JaCoCo coverage summary
+        if: always()
+        working-directory: backend
+        run: |
+          if [ -f target/site/jacoco/jacoco.csv ]; then
+            awk -F, 'NR>1 {lm+=$8; lc+=$9; bm+=$6; bc+=$7} END {printf "Line coverage: %.1f%%
+Branch coverage: %.1f%%
+", 100*lc/(lc+lm), 100*bc/(bc+bm)}' target/site/jacoco/jacoco.csv | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload JaCoCo report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: backend/target/site/jacoco/
+
   postgres16-migration:
     name: PostgreSQL 16 Migration and Hibernate Validation
     runs-on: ubuntu-latest
