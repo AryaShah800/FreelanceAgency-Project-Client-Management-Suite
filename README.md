@@ -1,5 +1,7 @@
 # Freelance Agency Suite — Client Management & Ops Platform
 
+The [contract-drafting evaluation](docs/CONTRACT_EVALUATION.md) compares versioned prompts on 30 synthetic cases each: v2 has 30/30 structural and clause coverage and 18/30 passing every strict check. Generated drafts that omit supplied commercial facts are rejected in favor of an explicitly labeled local template. See [measured results](eval/REPORT.md); these checks do not establish legal adequacy.
+
 [![CI](https://github.com/AryaShah800/FreelanceAgency-Project-Client-Management-Suite/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/AryaShah800/FreelanceAgency-Project-Client-Management-Suite/actions/workflows/ci-cd.yml)
 
 **[Live demo](https://freelance-agency-suite-z19w-kappa.vercel.app)** · Java 21 · Spring Boot · React · PostgreSQL

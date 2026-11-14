@@ -10,6 +10,9 @@ public class AiProposalResponse {
     private List<String> reviewNotes;
     private LocalDateTime generatedAt;
 
+    private String promptVersion;
+    public String getPromptVersion() { return promptVersion; }
+    public void setPromptVersion(String value) { promptVersion = value; }
     public AiProposalResponse() {}
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

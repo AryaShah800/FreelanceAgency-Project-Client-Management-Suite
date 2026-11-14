@@ -21,6 +21,14 @@ public class AiContractRequest {
     @Size(max = 500, message = "Budget guidance must be 500 characters or fewer")
     private String budgetGuidance;
 
+    @Size(max = 500)
+    private String gstStatus;
+    @Size(max = 500)
+    private String jurisdiction;
+    public String getGstStatus() { return gstStatus; }
+    public void setGstStatus(String value) { gstStatus = value; }
+    public String getJurisdiction() { return jurisdiction; }
+    public void setJurisdiction(String value) { jurisdiction = value; }
     public AiContractRequest() {}
 
     public String getClientName() { return clientName; }

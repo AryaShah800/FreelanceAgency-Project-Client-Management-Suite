@@ -1,0 +1,602 @@
+[
+  {
+    "version": "contract_v1",
+    "case_id": "case-01",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-02",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-03",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-04",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-05",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-06",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-07",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-08",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-09",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-10",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-11",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-12",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-13",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-14",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-15",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-16",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-17",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-18",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-19",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-20",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-21",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-22",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-23",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-24",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-25",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-26",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-27",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-28",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-29",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v1",
+    "case_id": "case-30",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": false,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-01",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-02",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-03",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-04",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-05",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-06",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-07",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-08",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-09",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-10",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-11",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-12",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-13",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-14",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-15",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-16",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-17",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-18",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-19",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-20",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-21",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-22",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-23",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-24",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-25",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": true,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-26",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-27",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-28",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-29",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  },
+  {
+    "version": "contract_v2",
+    "case_id": "case-30",
+    "completed": true,
+    "error": "",
+    "schema": true,
+    "clauses": true,
+    "supplied_facts": false,
+    "no_extra_money_dates": true
+  }
+]
