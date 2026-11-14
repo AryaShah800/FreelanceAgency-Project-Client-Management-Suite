@@ -31,9 +31,7 @@ jobs:
         working-directory: backend
         run: |
           if [ -f target/site/jacoco/jacoco.csv ]; then
-            awk -F, 'NR>1 {lm+=$8; lc+=$9; bm+=$6; bc+=$7} END {printf "Line coverage: %.1f%%
-Branch coverage: %.1f%%
-", 100*lc/(lc+lm), 100*bc/(bc+bm)}' target/site/jacoco/jacoco.csv | tee -a "$GITHUB_STEP_SUMMARY"
+            awk -F, 'NR>1 {lm+=$8; lc+=$9; bm+=$6; bc+=$7} END {printf "Line coverage: %.1f%%\nBranch coverage: %.1f%%\n", 100*lc/(lc+lm), 100*bc/(bc+bm)}' target/site/jacoco/jacoco.csv | tee -a "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload JaCoCo report
