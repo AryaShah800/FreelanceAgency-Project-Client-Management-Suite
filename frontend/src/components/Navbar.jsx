@@ -13,7 +13,7 @@ export default function Navbar({ title, onQuickAction }) {
       </div>
 
       <div className="flex flex-row items-center gap-2 md:gap-4 shrink-0">
-        <div className="max-w-[38vw] md:max-w-none truncate text-right text-[10px] md:text-[11px] font-mono text-ink-muted">
+        <div className="hidden sm:block max-w-[38vw] md:max-w-none truncate text-right text-[10px] md:text-[11px] font-mono text-ink-muted">
           <span className="hidden sm:inline">Active Session: </span><span className="text-ink font-semibold">{user?.email}</span>
         </div>
 

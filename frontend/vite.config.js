@@ -55,6 +55,12 @@ export default defineConfig(({ mode }) => {
     define: {
       global: 'window',
     },
+    test: {
+      environment: 'jsdom',
+      include: ['src/**/*.test.jsx'],
+      setupFiles: ['./src/setupTests.js'],
+      globals: true,
+    },
     server: {
       port: 5173,
       proxy: {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
+import { WakingNote, LoadError, CardListSkeleton, useSlowLoading } from '../components/LoadingStates';
 import TaskCommentDrawer from '../components/TaskCommentDrawer';
 import { useAuth } from '../context/AuthContext';
 import { wsService } from '../services/websocket';
@@ -19,6 +20,9 @@ export default function Tasks() {
   const isClient = role === 'CLIENT';
   const isOwner = role === 'OWNER';
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const slow = useSlowLoading(loading);
   const [projects, setProjects] = useState([]);
   const [staffMembers, setStaffMembers] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -134,8 +138,12 @@ export default function Tasks() {
     try {
       const res = await api.get('/tasks');
       setTasks(res.data);
+      setLoadError(false);
     } catch (err) {
       console.error(err);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -301,6 +309,13 @@ export default function Tasks() {
           </div>
         )}
 
+        <WakingNote show={slow} />
+        {loadError && !loading && <LoadError message="Could not load tasks." onRetry={fetchTasks} />}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {TASK_STATUSES.map((status) => <CardListSkeleton key={status.id} rows={3} label={`Loading ${status.label}`} />)}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {TASK_STATUSES.map((status) => {
             const statusTasks = tasks.filter((t) => t.status === status.id);
@@ -423,6 +438,7 @@ export default function Tasks() {
             );
           })}
         </div>
+        )}
       </main>
 
       {/* Task Comments Slide-over Drawer */}

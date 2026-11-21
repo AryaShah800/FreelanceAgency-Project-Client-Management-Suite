@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
+import { WakingNote, LoadError, CardListSkeleton, useSlowLoading } from '../components/LoadingStates';
 import { Mail, Phone, Building, Plus, Trash2, ShieldAlert } from 'lucide-react';
 
 const STAGES = [
@@ -13,6 +14,9 @@ const STAGES = [
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const slow = useSlowLoading(loading);
   const [showModal, setShowModal] = useState(false);
   const [invitingClientId, setInvitingClientId] = useState(null);
   const [newClient, setNewClient] = useState({
@@ -32,8 +36,12 @@ export default function Clients() {
     try {
       const res = await api.get('/clients');
       setClients(res.data);
+      setLoadError(false);
     } catch (err) {
       console.error(err);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,6 +93,13 @@ export default function Clients() {
       <Navbar title="Client CRM Pipeline" onQuickAction={() => setShowModal(true)} />
 
       <main className="flex-1 p-6">
+        <WakingNote show={slow} />
+        {loadError && !loading && <div className="mb-4"><LoadError message="Could not load clients." onRetry={fetchClients} /></div>}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pb-4">
+            {Array.from({ length: 5 }, (_, i) => <div key={i} className="min-w-[260px]"><CardListSkeleton rows={3} label="Loading clients" /></div>)}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto pb-4">
           {STAGES.map((stage) => {
             const stageClients = clients.filter((c) => c.dealStage === stage.id);
@@ -159,6 +174,7 @@ export default function Clients() {
             );
           })}
         </div>
+        )}
       </main>
 
       {/* Modal */}

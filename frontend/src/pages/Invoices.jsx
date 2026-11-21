@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
+import { WakingNote, LoadError, CardListSkeleton, useSlowLoading } from '../components/LoadingStates';
 import { useAuth } from '../context/AuthContext';
 import { Download, Plus, Clock, CreditCard, ShieldCheck } from 'lucide-react';
 import { trackEvent } from '../services/analytics';
@@ -25,6 +26,9 @@ export default function Invoices() {
   const isOwner = user?.role === 'OWNER';
 
   const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const slow = useSlowLoading(loading);
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showUnbilledModal, setShowUnbilledModal] = useState(false);
@@ -57,8 +61,12 @@ export default function Invoices() {
     try {
       const res = await api.get('/invoices');
       setInvoices(res.data);
+      setLoadError(false);
     } catch (err) {
       console.error(err);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -257,6 +265,11 @@ export default function Invoices() {
         </div>
 
         {/* Invoices Table */}
+        <WakingNote show={slow} />
+        {loadError && !loading && <LoadError message="Could not load invoices." onRetry={fetchInvoices} />}
+        {loading ? (
+          <div className="bg-surface border border-border shadow-sm rounded p-6"><CardListSkeleton rows={4} label="Loading invoices" /></div>
+        ) : (
         <div className="bg-surface border border-border shadow-sm rounded p-6">
           <ul className="md:hidden space-y-3" aria-label="Invoices">
             {invoices.map((inv) => {
@@ -323,6 +336,7 @@ export default function Invoices() {
             </table>
           </div>
         </div>
+        )}
       </main>
 
       {/* Unbilled Hours Modal */}

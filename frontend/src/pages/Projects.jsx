@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
+import { WakingNote, LoadError, CardListSkeleton, useSlowLoading } from '../components/LoadingStates';
 import { useAuth } from '../context/AuthContext';
 import { Briefcase, Calendar, IndianRupee, Trash2, Plus, TrendingUp, DollarSign, Receipt } from 'lucide-react';
 
@@ -8,6 +9,9 @@ export default function Projects() {
   const { user } = useAuth();
   const isOwner = String(user?.role || '').toUpperCase() === 'OWNER';
   const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const slow = useSlowLoading(loading);
   const [clients, setClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -51,8 +55,12 @@ export default function Projects() {
           console.error(e);
         }
       });
+      setLoadError(false);
     } catch (err) {
       console.error(err);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -95,6 +103,13 @@ export default function Projects() {
       <Navbar title={isOwner ? "Project Ledger & Net Profitability" : "Assigned Projects"} onQuickAction={isOwner ? () => setShowModal(true) : null} />
 
       <main className="flex-1 p-6 space-y-6">
+        <WakingNote show={slow} />
+        {loadError && !loading && <LoadError message="Could not load projects." onRetry={fetchData} />}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl">
+            {Array.from({ length: 3 }, (_, i) => <CardListSkeleton key={i} rows={1} label="Loading projects" />)}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl">
           {projects.map((project) => {
             const metrics = projectProfitability[project.id] || {
@@ -174,6 +189,7 @@ export default function Projects() {
             <span className="text-[11px] text-ink-muted">Add another client assignment</span>
           </button>}
         </div>
+        )}
       </main>
 
       {/* Expense Modal */}
