@@ -57,6 +57,8 @@ public class DemoWorkspaceSeeder implements CommandLineRunner {
     }
 
     // company, contact, email, state code, stage
+    private static final long DEMO_HOURLY_RATE = 1500;
+
     private record ClientSpec(String company, String contact, String email, String state, DealStage stage) {}
     // title, description, client index, budget, target margin %, months since kickoff, weeks until deadline, task progress, invoice plan
     private record ProjectSpec(String title, String desc, int client, long budget, int margin, int monthsAgo,
@@ -135,8 +137,8 @@ public class DemoWorkspaceSeeder implements CommandLineRunner {
 
             // Invoices: equal instalments across the plan, GST split by client state.
             String plan = ps.invoicePlan();
-            BigDecimal instalment = BigDecimal.valueOf(ps.budget())
-                    .divide(BigDecimal.valueOf(plan.length() == 1 ? 2 : plan.length()), 2, RoundingMode.HALF_UP);
+            int instalments = plan.length() == 1 ? 2 : plan.length();
+            long base = ps.budget() / instalments / 500 * 500; // whole rupees, multiples of 500
             for (int i = 0; i < plan.length(); i++) {
                 char s = plan.charAt(i);
                 LocalDateTime created = now.minusMonths(Math.max(0, ps.monthsAgo() - i)).minusDays(5 + i);
@@ -152,7 +154,8 @@ public class DemoWorkspaceSeeder implements CommandLineRunner {
                     case 'S' -> LocalDate.now().plusDays(10 + p);
                     default -> LocalDate.now().plusDays(21);
                 };
-                Invoice inv = invoice(String.format("INV-2026-%03d", invoiceSeq++), instalment, client.getStateCode(), status, due, created, project);
+                long amount = i == instalments - 1 ? ps.budget() - base * (instalments - 1) : base;
+                Invoice inv = invoice(String.format("INV-2026-%03d", invoiceSeq++), amount, ps.title(), i + 1, instalments, client.getStateCode(), status, due, created, project);
                 if (status == InvoiceStatus.PAID) {
                     payments.save(Payment.builder().invoice(inv).amount(inv.getTotalAmount())
                             .razorpayPaymentId("pay_demo_" + inv.getInvoiceNumber())
@@ -247,16 +250,31 @@ public class DemoWorkspaceSeeder implements CommandLineRunner {
         }
     }
 
-    private Invoice invoice(String number, BigDecimal subtotal, String clientState, InvoiceStatus status, LocalDate due,
+    private Invoice invoice(String number, long amount, String projectTitle, int part, int parts, String clientState, InvoiceStatus status, LocalDate due,
                             LocalDateTime created, Project project) {
         boolean sameState = AGENCY_STATE.equals(clientState);
+        // Lines are built from qty x rate in whole rupees: ~70% billed as engineering hours at a flat
+        // rate, the rest as a fixed-fee line, so the subtotal is exactly the sum of its lines.
+        long hours = amount * 7 / 10 / DEMO_HOURLY_RATE;
+        long fixedFee = amount - hours * DEMO_HOURLY_RATE;
+        List<InvoiceLineItem> lines = new ArrayList<>();
+        lines.add(InvoiceLineItem.builder().description(projectTitle + " - engineering (milestone " + part + " of " + parts + ")")
+                .quantity((int) hours).unitPrice(BigDecimal.valueOf(DEMO_HOURLY_RATE))
+                .amount(BigDecimal.valueOf(hours * DEMO_HOURLY_RATE)).build());
+        lines.add(InvoiceLineItem.builder().description("Project management and QA (fixed fee)")
+                .quantity(1).unitPrice(BigDecimal.valueOf(fixedFee)).amount(BigDecimal.valueOf(fixedFee)).build());
+        BigDecimal subtotal = lines.stream().map(InvoiceLineItem::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.UNNECESSARY);
         BigDecimal half = subtotal.multiply(new BigDecimal("0.09")).setScale(2, RoundingMode.HALF_UP);
         BigDecimal igst = subtotal.multiply(new BigDecimal("0.18")).setScale(2, RoundingMode.HALF_UP);
         BigDecimal cgst = sameState ? half : BigDecimal.ZERO;
         BigDecimal sgst = sameState ? half : BigDecimal.ZERO;
         BigDecimal ig = sameState ? BigDecimal.ZERO : igst;
-        return invoices.save(Invoice.builder().project(project).invoiceNumber(number).subtotal(subtotal).cgst(cgst).sgst(sgst)
-                .igst(ig).totalAmount(subtotal.add(cgst).add(sgst).add(ig)).status(status).dueDate(due).createdAt(created).build());
+        Invoice invoice = Invoice.builder().project(project).invoiceNumber(number).subtotal(subtotal).cgst(cgst).sgst(sgst)
+                .igst(ig).totalAmount(subtotal.add(cgst).add(sgst).add(ig)).status(status).dueDate(due).createdAt(created)
+                .lineItems(lines).build();
+        lines.forEach(l -> l.setInvoice(invoice));
+        return invoices.save(invoice);
     }
 
     private AppUser user(String name, String email, Role role, double rate, Agency agency, String hash) {

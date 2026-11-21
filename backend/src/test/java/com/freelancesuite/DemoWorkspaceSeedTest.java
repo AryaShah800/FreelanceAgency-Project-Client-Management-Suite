@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -66,6 +67,21 @@ class DemoWorkspaceSeedTest {
                     .compareTo(inv.get("totalAmount").decimalValue()), "GST must reconcile on " + inv.get("invoiceNumber"));
         }
         assertEquals(Set.of("PAID", "SENT", "OVERDUE", "DRAFT"), statuses);
+        for (JsonNode inv : invoices) {
+            String n = inv.get("invoiceNumber").asText();
+            BigDecimal sum = BigDecimal.ZERO;
+            assertTrue(inv.get("lineItems").size() > 0, n + " has line items");
+            for (JsonNode l : inv.get("lineItems")) {
+                BigDecimal qtyXRate = l.get("unitPrice").decimalValue().multiply(BigDecimal.valueOf(l.get("quantity").asLong()));
+                assertEquals(0, qtyXRate.compareTo(l.get("amount").decimalValue()), "line = qty x rate on " + n);
+                sum = sum.add(l.get("amount").decimalValue());
+            }
+            assertEquals(0, sum.compareTo(inv.get("subtotal").decimalValue()), "subtotal equals sum of lines on " + n);
+            for (String f : new String[] {"subtotal", "cgst", "sgst", "igst", "totalAmount"}) {
+                assertTrue(inv.get(f).decimalValue().stripTrailingZeros().scale() <= 2, f + " has at most 2 decimals on " + n);
+            }
+            assertTrue(inv.get("subtotal").decimalValue().stripTrailingZeros().scale() <= 0, "subtotal is whole rupees on " + n);
+        }
         assertTrue(intra && inter, "demo shows CGST+SGST and IGST invoices");
         assertTrue(invoices.size() >= 15);
     }
