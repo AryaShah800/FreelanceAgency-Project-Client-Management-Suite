@@ -5,6 +5,20 @@ import { useAuth } from '../context/AuthContext';
 import { Download, Plus, Clock, CreditCard, ShieldCheck } from 'lucide-react';
 import { trackEvent } from '../services/analytics';
 
+const STATUS_CLASSES = {
+  PAID: 'bg-forest-soft text-forest border border-forest/20',
+  SENT: 'bg-brass-soft text-brass-dark border border-brass/20',
+  OVERDUE: 'bg-rust-soft text-rust border border-rust/30',
+};
+
+function StatusBadge({ status }) {
+  return (
+    <span className={`font-mono text-[10px] px-2.5 py-1 rounded-full font-bold uppercase ${STATUS_CLASSES[status] || 'bg-paper text-ink-muted border border-border'}`}>
+      {status}
+    </span>
+  );
+}
+
 export default function Invoices() {
   const { user } = useAuth();
   const isClient = user?.role === 'CLIENT';
@@ -172,6 +186,43 @@ export default function Invoices() {
     }
   };
 
+  const renderActions = (inv) => (
+    <>
+                        {isClient && ['SENT', 'OVERDUE'].includes(inv.status) ? (
+          <button
+            onClick={() => handleRazorpayPayment(inv)}
+            disabled={payingInvoiceId === inv.id}
+            className="px-3 py-1.5 bg-forest hover:bg-forest/90 text-white rounded text-[11px] font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all"
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            {payingInvoiceId === inv.id ? 'Processing...' : 'Pay Online'}
+          </button>
+        ) : isOwner && inv.status === 'DRAFT' ? (
+          <button
+            onClick={() => handleUpdateStatus(inv.id, 'SENT')}
+            className="px-2.5 py-1 bg-brass-soft hover:bg-brass/20 text-brass-dark border border-brass/20 rounded text-[11px] font-semibold transition-colors"
+          >
+            Mark Sent
+          </button>
+        ) : isOwner && ['SENT', 'OVERDUE'].includes(inv.status) ? (
+          <button
+            onClick={() => handleUpdateStatus(inv.id, 'PAID')}
+            className="px-2.5 py-1 bg-forest-soft hover:bg-forest/20 text-forest border border-forest/20 rounded text-[11px] font-semibold transition-colors"
+          >
+            Mark Paid
+          </button>
+        ) : null}
+
+        <button
+          onClick={() => handleDownloadPdf(inv.id)}
+          className="px-2.5 py-1 bg-brass-soft hover:bg-brass/25 text-brass-dark border border-brass/20 rounded text-[11px] font-semibold inline-flex items-center gap-1 transition-colors"
+        >
+          <Download className="w-3 h-3" />
+          PDF
+        </button>
+    </>
+  );
+
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-paper">
       <Navbar title={isClient ? "My Tax Invoices & Online Payments" : "Tax Invoice Ledger & Tax Engine"} />
@@ -207,7 +258,31 @@ export default function Invoices() {
 
         {/* Invoices Table */}
         <div className="bg-surface border border-border shadow-sm rounded p-6">
-          <div className="overflow-x-auto">
+          <ul className="md:hidden space-y-3" aria-label="Invoices">
+            {invoices.map((inv) => {
+              const isIgst = inv.igst && inv.igst > 0;
+              const taxValue = isIgst ? inv.igst : (inv.cgst || 0) + (inv.sgst || 0);
+              return (
+                <li key={inv.id} className="border border-border rounded p-4 bg-paper/40 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-mono font-bold text-brass-dark text-sm">{inv.invoiceNumber}</div>
+                      <div className="font-bold text-ink text-sm truncate">{inv.clientName}</div>
+                      <div className="text-ink-muted text-xs truncate">{inv.projectTitle}</div>
+                    </div>
+                    <StatusBadge status={inv.status} />
+                  </div>
+                  <dl className="grid grid-cols-3 gap-2 text-xs">
+                    <div><dt className="text-ink-muted">Subtotal</dt><dd className="font-mono tabular-nums text-ink">₹{inv.subtotal?.toLocaleString('en-IN')}</dd></div>
+                    <div><dt className="text-ink-muted">{isIgst ? 'IGST' : 'CGST+SGST'}</dt><dd className="font-mono tabular-nums text-ink">₹{taxValue?.toLocaleString('en-IN')}</dd></div>
+                    <div><dt className="text-ink-muted">Total</dt><dd className="font-mono tabular-nums font-bold text-ink">₹{inv.totalAmount?.toLocaleString('en-IN')}</dd></div>
+                  </dl>
+                  <div className="flex flex-wrap items-center gap-2">{renderActions(inv)}</div>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-border text-xs font-semibold text-ink-muted">
@@ -239,53 +314,8 @@ export default function Invoices() {
                         <div className="text-[9px] text-brass-dark font-sans">{taxLabel}</div>
                       </td>
                       <td className="py-4 font-mono text-right font-bold text-ink tabular-nums">₹{inv.totalAmount?.toLocaleString()}</td>
-                      <td className="py-4 text-center">
-                        <span
-                          className={`font-mono text-[10px] px-2.5 py-1 rounded-full font-bold uppercase ${
-                            inv.status === 'PAID'
-                              ? 'bg-forest-soft text-forest border border-forest/20'
-                              : inv.status === 'SENT'
-                              ? 'bg-brass-soft text-brass-dark border border-brass/20'
-                              : 'bg-paper text-ink-muted border border-border'
-                          }`}
-                        >
-                          {inv.status}
-                        </span>
-                      </td>
-                      <td className="py-4 text-right pr-2 space-x-2">
-                        {isClient && ['SENT', 'OVERDUE'].includes(inv.status) ? (
-                          <button
-                            onClick={() => handleRazorpayPayment(inv)}
-                            disabled={payingInvoiceId === inv.id}
-                            className="px-3 py-1.5 bg-forest hover:bg-forest/90 text-white rounded text-[11px] font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all"
-                          >
-                            <CreditCard className="w-3.5 h-3.5" />
-                            {payingInvoiceId === inv.id ? 'Processing...' : 'Pay Online'}
-                          </button>
-                        ) : isOwner && inv.status === 'DRAFT' ? (
-                          <button
-                            onClick={() => handleUpdateStatus(inv.id, 'SENT')}
-                            className="px-2.5 py-1 bg-brass-soft hover:bg-brass/20 text-brass-dark border border-brass/20 rounded text-[11px] font-semibold transition-colors"
-                          >
-                            Mark Sent
-                          </button>
-                        ) : isOwner && ['SENT', 'OVERDUE'].includes(inv.status) ? (
-                          <button
-                            onClick={() => handleUpdateStatus(inv.id, 'PAID')}
-                            className="px-2.5 py-1 bg-forest-soft hover:bg-forest/20 text-forest border border-forest/20 rounded text-[11px] font-semibold transition-colors"
-                          >
-                            Mark Paid
-                          </button>
-                        ) : null}
-
-                        <button
-                          onClick={() => handleDownloadPdf(inv.id)}
-                          className="px-2.5 py-1 bg-brass-soft hover:bg-brass/25 text-brass-dark border border-brass/20 rounded text-[11px] font-semibold inline-flex items-center gap-1 transition-colors"
-                        >
-                          <Download className="w-3 h-3" />
-                          PDF
-                        </button>
-                      </td>
+                      <td className="py-4 text-center"><StatusBadge status={inv.status} /></td>
+                      <td className="py-4 text-right pr-2 space-x-2">{renderActions(inv)}</td>
                     </tr>
                   );
                 })}

@@ -120,7 +120,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <div className="border-t border-border pt-4 space-y-3">
+      <div className={`${mobileOpen ? 'block' : 'hidden'} md:block border-t border-border pt-4 space-y-3`}>
         <div className="hidden md:flex px-3 py-2 rounded bg-paper border border-border items-center gap-3">
           <div className={`w-8 h-8 rounded-full font-bold flex items-center justify-center text-xs ${
             isClient ? 'bg-forest/15 text-forest' : 'bg-brass/15 text-brass-dark'
