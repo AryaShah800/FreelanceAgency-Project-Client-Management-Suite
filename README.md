@@ -97,6 +97,8 @@ client data. Email flows and real online payments are unavailable in this mode.
 Use these public demo credentials only on that isolated demo backend:
 `demo@agency.test` / `DemoAccess2026!`.
 
+The demo workspace (`DemoWorkspaceSeeder`) is a small fictional agency: 8 clients across every deal stage, 12 projects with margins between 24% and 61% (hard expenses plus logged labour), 36 tasks across all board columns, 22 invoices (paid, sent, overdue and draft; CGST+SGST for same-state clients, IGST otherwise), 4 proposals (one open public link at `/p/demo-proposal-token-2026`) and an activity feed. `DemoWorkspaceSeedTest` asserts these shapes through the HTTP API. Without `CORS_ALLOWED_ORIGINS`, the demo profile accepts localhost on ports 5173-5175 and 3000 only; set the variable (comma-separated origins) for any other frontend host.
+
 For a hosted demo, create a **separate Render Web Service** from the repository
 with root directory `backend`, Dockerfile path `backend/Dockerfile`, and set:
 

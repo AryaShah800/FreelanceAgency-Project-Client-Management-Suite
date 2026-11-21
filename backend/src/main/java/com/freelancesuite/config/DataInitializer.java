@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 
 @Component
-@Profile("dev | demo")
+@Profile("dev")
 public class DataInitializer implements CommandLineRunner {
 
     private final AgencyRepository agencies; private final AppUserRepository users; private final ClientRepository clients;
