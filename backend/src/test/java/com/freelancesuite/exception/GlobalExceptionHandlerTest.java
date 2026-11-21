@@ -39,4 +39,23 @@ class GlobalExceptionHandlerTest {
         assertEquals("You do not have permission to perform this action.", response.getBody().get("message"));
         assertFalse(response.getBody().toString().contains("agency 93"));
     }
+
+    @Test
+    void unknownRoutesReturn404WithStandardErrorShape() throws Exception {
+        var response = handler.handleNotFound(
+                new org.springframework.web.servlet.resource.NoResourceFoundException(
+                        org.springframework.http.HttpMethod.GET, "/api/nope", "/api/nope"));
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(404, response.getBody().get("status"));
+        assertEquals("Not Found", response.getBody().get("error"));
+        assertFalse(response.getBody().toString().contains("/api/nope"));
+    }
+
+    @Test
+    void noHandlerFoundReturns404() throws Exception {
+        var response = handler.handleNotFound(
+                new org.springframework.web.servlet.NoHandlerFoundException("GET", "/x", new org.springframework.http.HttpHeaders()));
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    }
 }

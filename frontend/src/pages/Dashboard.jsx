@@ -18,8 +18,9 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import DashboardCharts from '../components/DashboardCharts';
+import { Skeleton, WakingNote, LoadError, CardListSkeleton, useSlowLoading } from '../components/LoadingStates';
 
-function StatCard({ label, value, sublabel, accent = "brass" }) {
+function StatCard({ label, value, sublabel, accent = "brass", loading = false }) {
   const accentMap = {
     brass: "text-brass-dark bg-brass-soft/40 border-brass/30",
     forest: "text-forest bg-forest-soft border-forest/30",
@@ -29,7 +30,11 @@ function StatCard({ label, value, sublabel, accent = "brass" }) {
   return (
     <div className="border-l-4 border-ink/20 pl-5 py-4 bg-surface rounded-r shadow-xs">
       <p className="font-sans text-xs uppercase tracking-wider text-ink-muted font-medium">{label}</p>
-      <p className="font-display text-3xl font-bold text-ink mt-1.5">{value}</p>
+      {loading ? (
+        <Skeleton className="h-9 w-28 mt-1.5" />
+      ) : (
+        <p className="font-display text-3xl font-bold text-ink mt-1.5">{value}</p>
+      )}
       {sublabel && (
         <span className={`inline-block mt-2 text-[10px] font-mono px-2.5 py-0.5 rounded border ${accentMap[accent]}`}>
           {sublabel}
@@ -57,12 +62,16 @@ export default function Dashboard() {
   const [allClients, setAllClients] = useState([]);
   const [allInvoices, setAllInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const slow = useSlowLoading(loading);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(false);
     try {
       const [projectsRes, tasksRes, invoicesRes] = await Promise.all([
         api.get('/projects'),
@@ -99,6 +108,7 @@ export default function Dashboard() {
       setClientTasks(tasksRes.data);
     } catch (err) {
       console.error(err);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -118,6 +128,9 @@ export default function Dashboard() {
       <Navbar title={isClient ? 'Client Super Dashboard & Project Health' : 'Agency Command Center'} />
 
       <main className="flex-1 p-6 space-y-6">
+        <WakingNote show={slow} />
+        {error && !loading && <LoadError message="We could not load the dashboard data." onRetry={fetchDashboardData} />}
+
         {/* Banner Sheet */}
         <div className="bg-surface p-6 rounded border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -155,7 +168,7 @@ export default function Dashboard() {
         </div>
 
         {/* Actionable Client Blocker Alert Box */}
-        {isClient && blockedTasks.length > 0 && (
+        {isClient && !loading && blockedTasks.length > 0 && (
           <div className="bg-rust-soft border border-rust/40 p-4 rounded shadow-xs flex items-center justify-between">
             <div className="flex items-center gap-3">
               <AlertTriangle className="w-5 h-5 text-rust shrink-0" />
@@ -175,7 +188,16 @@ export default function Dashboard() {
         {!isClient && !loading && <DashboardCharts invoices={allInvoices} clients={allClients} />}
 
         {/* Client Budget Burn-Down & Delivery Velocity Section */}
-        {isClient ? (
+        {loading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-7 bg-surface p-6 rounded border border-border shadow-sm">
+              <CardListSkeleton rows={3} label="Loading project health" />
+            </div>
+            <div className="lg:col-span-5 bg-surface p-6 rounded border border-border shadow-sm">
+              <CardListSkeleton rows={4} label="Loading activity" />
+            </div>
+          </div>
+        ) : error ? null : isClient ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-7 bg-surface p-6 rounded border border-border shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-border">
@@ -255,11 +277,12 @@ export default function Dashboard() {
                   <Activity className="w-4 h-4 text-brass-dark" />
                   Traffic-Light Project Health Scores
                 </h3>
-                <Link to="/projects" className="text-xs font-mono text-brass-dark hover:underline">Showing {Math.min(5, recentProjects.length)} of {recentProjects.length} · View all</Link>
+                <Link to="/projects" className="text-xs font-mono text-brass-dark hover:underline">{loading ? 'View all' : `Showing ${Math.min(5, recentProjects.length)} of ${recentProjects.length} · View all`}</Link>
               </div>
 
               <div className="space-y-3">
-                {recentProjects.slice(0, 5).map((proj) => {
+                {loading && <CardListSkeleton rows={3} label="Loading project health" />}
+                {!loading && recentProjects.slice(0, 5).map((proj) => {
                   const projTasks = clientTasks.filter((t) => t.projectId === proj.id);
                   const projDone = projTasks.filter((t) => t.status === 'DONE').length;
                   const healthStatus = projTasks.length > 0 && projDone / projTasks.length >= 0.5 ? 'GREEN' : 'YELLOW';
@@ -294,7 +317,9 @@ export default function Dashboard() {
                 <span className="font-mono text-[10px] text-ink-muted">REAL-TIME LOG</span>
               </div>
 
-              {auditEvents.length === 0 ? (
+              {loading ? (
+                <CardListSkeleton rows={4} label="Loading activity" />
+              ) : auditEvents.length === 0 ? (
                 <p className="text-xs text-ink-muted py-6 text-center">No activity logged yet.</p>
               ) : (
                 <div className="space-y-3 font-mono text-xs">
@@ -316,9 +341,10 @@ export default function Dashboard() {
         )}
 
         {/* Hierarchical Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {!error && <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="md:col-span-2">
             <StatCard
+              loading={loading}
               label={isClient ? 'Total Invoiced Amount' : 'Total Revenue (Paid)'}
               value={`₹${stats.revenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
               sublabel="Active ledger balance"
@@ -327,6 +353,7 @@ export default function Dashboard() {
           </div>
 
           <StatCard
+            loading={loading}
             label={isClient ? 'Active Projects' : 'Ongoing Projects'}
             value={stats.projects.toString()}
             sublabel="Tracked contract limits"
@@ -334,12 +361,13 @@ export default function Dashboard() {
           />
 
           <StatCard
+            loading={loading}
             label={isClient ? 'Milestone Tasks' : 'Active Tasks'}
             value={stats.tasks.toString()}
             sublabel="Assigned deliverables"
             accent="neutral"
           />
-        </div>
+        </div>}
       </main>
     </div>
   );
