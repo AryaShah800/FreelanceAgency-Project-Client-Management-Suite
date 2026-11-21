@@ -14,6 +14,14 @@ recording acceptance, and creating projects with milestone invoices.
 Designed for freelance agencies to manage client relationships, delivery,
 proposals, and billing in one workspace.
 
+## Screenshots
+
+![Demo tour: dashboard, CRM, projects, task board, invoices, proposals](docs/screenshots/demo-tour.gif)
+
+| Dashboard | Invoices on mobile |
+| --- | --- |
+| ![Dashboard](docs/screenshots/dashboard-desktop.png) | ![Invoice cards on mobile](docs/screenshots/invoices-mobile.png) |
+
 ## Stack
 
 **Backend** — Java 21, Spring Boot 4, Spring Security (JWT, stateless), Spring
@@ -173,7 +181,27 @@ The GitHub Actions workflow runs the backend test suite, checks frontend
 dependencies for high severity advisories, and builds the production bundle on
 pushes and pull requests to `main` or `master`.
 
+End-to-end (Playwright, 5 specs, runs against the `demo` profile and Vite; also a CI job):
+
+```bash
+cd e2e && npm ci && npx playwright install chromium
+npx playwright test    # starts the backend (demo profile) and the frontend itself
+```
+
+Set `E2E_CHANNEL=msedge` (or `chrome`) to reuse an installed browser.
+
 ## Architecture notes
+
+```mermaid
+flowchart LR
+  Browser["React 18 + Vite SPA (Vercel)"] -- "REST + JWT" --> API["Spring Boot 4 API (Render)"]
+  Browser <-- "STOMP over SockJS: live task comments" --> API
+  API --> DB[("PostgreSQL / H2 in demo")]
+  API -- "proposal drafting" --> Gemini
+  Client["Client (public link)"] -- "/p/:token, /portal/share/:token" --> API
+  Razorpay -- "payment.captured webhook (HMAC-SHA256)" --> API
+  API -- "PDF: invoices, acceptance record" --> Browser
+```
 
 - **Auth**: stateless JWT, validated per-request by `JwtAuthenticationFilter`
   and per-STOMP-frame by `JwtChannelInterceptor` (WebSocket subscriptions to
