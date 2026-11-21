@@ -17,6 +17,7 @@ import {
   History
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import DashboardCharts from '../components/DashboardCharts';
 
 function StatCard({ label, value, sublabel, accent = "brass" }) {
   const accentMap = {
@@ -53,6 +54,8 @@ export default function Dashboard() {
   const [recentInvoices, setRecentInvoices] = useState([]);
   const [clientTasks, setClientTasks] = useState([]);
   const [auditEvents, setAuditEvents] = useState([]);
+  const [allClients, setAllClients] = useState([]);
+  const [allInvoices, setAllInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -74,6 +77,7 @@ export default function Dashboard() {
           api.get('/audit-events'),
         ]);
         clientsCount = clientsRes.data.length;
+        setAllClients(clientsRes.data);
         setAuditEvents(auditRes.data.slice(0, 6));
       }
 
@@ -89,6 +93,7 @@ export default function Dashboard() {
         revenue: totalRevenue,
       });
 
+      setAllInvoices(invoicesRes.data);
       setRecentProjects(projectsRes.data);
       setRecentInvoices(invoicesRes.data.slice(0, 4));
       setClientTasks(tasksRes.data);
@@ -166,6 +171,8 @@ export default function Dashboard() {
             </Link>
           </div>
         )}
+
+        {!isClient && !loading && <DashboardCharts invoices={allInvoices} clients={allClients} />}
 
         {/* Client Budget Burn-Down & Delivery Velocity Section */}
         {isClient ? (
@@ -248,11 +255,11 @@ export default function Dashboard() {
                   <Activity className="w-4 h-4 text-brass-dark" />
                   Traffic-Light Project Health Scores
                 </h3>
-                <span className="text-xs font-mono text-ink-muted">Global Operations Scope</span>
+                <Link to="/projects" className="text-xs font-mono text-brass-dark hover:underline">Showing {Math.min(5, recentProjects.length)} of {recentProjects.length} · View all</Link>
               </div>
 
               <div className="space-y-3">
-                {recentProjects.map((proj) => {
+                {recentProjects.slice(0, 5).map((proj) => {
                   const projTasks = clientTasks.filter((t) => t.projectId === proj.id);
                   const projDone = projTasks.filter((t) => t.status === 'DONE').length;
                   const healthStatus = projTasks.length > 0 && projDone / projTasks.length >= 0.5 ? 'GREEN' : 'YELLOW';
@@ -313,7 +320,7 @@ export default function Dashboard() {
           <div className="md:col-span-2">
             <StatCard
               label={isClient ? 'Total Invoiced Amount' : 'Total Revenue (Paid)'}
-              value={`₹${stats.revenue.toLocaleString()}`}
+              value={`₹${stats.revenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
               sublabel="Active ledger balance"
               accent="forest"
             />
