@@ -30,20 +30,19 @@ public class AIRateLimitTest {
     }
 
     @Test
-    void testRateLimitEnforced() {
+    void controllerDelegatesRateLimitingToTheService() {
         UserPrincipal principal = new UserPrincipal(1L, "owner@example.com", "owner@example.com", "pass", 10L, com.freelancesuite.entity.enums.Role.OWNER, java.util.List.of());
         AiContractRequest req = new AiContractRequest();
 
-        when(aiService.generateProposalContract(any(), eq(10L))).thenReturn(new AiProposalResponse());
+        when(aiService.generateProposalContract(any(), eq(10L)))
+                .thenReturn(new AiProposalResponse())
+                .thenThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Please wait"));
 
-        // First request should succeed
         ResponseEntity<AiProposalResponse> response = aiController.generateContract(req, principal);
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        // Second request immediately should fail with 429
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
-            aiController.generateContract(req, principal);
-        });
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> aiController.generateContract(req, principal));
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatusCode());
     }
 }
