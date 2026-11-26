@@ -121,6 +121,22 @@ class AccountLifecycleIntegrationTest {
     }
 
     @Test
+    void badPasswordsFromOneAddressDoNotLockTheOwnerOutEverywhere() {
+        String email = "targeted-" + UUID.randomUUID() + "@example.test";
+        createVerifiedOwner(email);
+
+        for (int attempt = 0; attempt < 5; attempt++) {
+            assertThrows(BadCredentialsException.class,
+                    () -> authService.login(login(email, "WrongPassword123!"), "203.0.113.7"));
+        }
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, assertThrows(ResponseStatusException.class,
+                () -> authService.login(login(email, INITIAL_PASSWORD), "203.0.113.7")).getStatusCode());
+
+        // The real owner, signing in from their own address, is not affected.
+        assertNotNull(authService.login(login(email, INITIAL_PASSWORD), "198.51.100.20").getToken());
+    }
+
+    @Test
     @Transactional
     void passwordResetChangesPasswordInvalidatesOldJwtAndConsumesToken() {
         AppUser owner = createVerifiedOwner("reset@example.test");
