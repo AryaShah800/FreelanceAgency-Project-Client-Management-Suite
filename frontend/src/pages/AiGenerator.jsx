@@ -22,6 +22,7 @@ import {
 import ProposalSectionEditor from '../components/ProposalSectionEditor';
 import { formatMarkdownToHtml, sanitizeHtml } from '../utils/formatUtils';
 import { calculateCommercials } from '../utils/taxMath';
+import { buildAiContractRequest } from '../utils/aiRequest';
 
 const defaultAgencySettings = {
   state: 'Maharashtra',
@@ -221,7 +222,8 @@ export default function AiGenerator() {
         .filter((milestone) => milestone.label.trim())
         .map((milestone) => `${milestone.percentage}% - ${milestone.label}`)
         .join('; ');
-      const res = await api.post('/ai/ai-generator', { ...formData, paymentTerms });
+      // Send the fields AiContractRequest declares; the raw form fields were ignored server-side.
+      const res = await api.post('/ai/ai-generator', buildAiContractRequest(formData, agencySettings, paymentTerms));
       if (!Array.isArray(res.data.sections) || !res.data.sections.length) {
         throw new Error('The backend is running an older AI endpoint. Restart the Spring Boot backend, then try again.');
       }
