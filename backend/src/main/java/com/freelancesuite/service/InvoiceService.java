@@ -243,27 +243,9 @@ public class InvoiceService {
     }
 
     private TaxBreakdown calculateMultiStateGst(BigDecimal subtotal, Project project) {
-        String agencyGstin = project.getClient().getAgency().getGstin();
-        String clientGstin = project.getClient().getGstin();
-
-        String agencyState = (agencyGstin != null && agencyGstin.length() >= 2) ? agencyGstin.substring(0, 2) : "27";
-        String clientState = (clientGstin != null && clientGstin.length() >= 2) ? clientGstin.substring(0, 2) : "27";
-
-        BigDecimal cgst = BigDecimal.ZERO;
-        BigDecimal sgst = BigDecimal.ZERO;
-        BigDecimal igst = BigDecimal.ZERO;
-
-        if (agencyState.equalsIgnoreCase(clientState)) {
-            // Intra-state (CGST 9% + SGST 9%)
-            cgst = subtotal.multiply(new BigDecimal("0.09")).setScale(2, RoundingMode.HALF_UP);
-            sgst = subtotal.multiply(new BigDecimal("0.09")).setScale(2, RoundingMode.HALF_UP);
-        } else {
-            // Inter-state (IGST 18%)
-            igst = subtotal.multiply(new BigDecimal("0.18")).setScale(2, RoundingMode.HALF_UP);
-        }
-
-        BigDecimal total = subtotal.add(cgst).add(sgst).add(igst);
-        return new TaxBreakdown(cgst, sgst, igst, total);
+        Client client = project.getClient();
+        GstCalculator.TaxBreakdown tax = GstCalculator.calculate(subtotal, client.getAgency(), client);
+        return new TaxBreakdown(tax.cgst(), tax.sgst(), tax.igst(), tax.totalAmount());
     }
 
     private static class TaxBreakdown {
