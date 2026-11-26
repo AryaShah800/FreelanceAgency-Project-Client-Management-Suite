@@ -261,17 +261,16 @@ public class ProposalConversionService {
     private Invoice createLegacyDepositInvoice(Proposal proposal, Project project) {
         BigDecimal depositSubtotal = proposal.getEstimatedBudget()
                 .multiply(new BigDecimal("0.50")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal cgst = depositSubtotal.multiply(new BigDecimal("0.09")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal sgst = depositSubtotal.multiply(new BigDecimal("0.09")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = depositSubtotal.add(cgst).add(sgst);
+        GstCalculator.TaxBreakdown tax = GstCalculator.calculate(
+                depositSubtotal, project.getClient().getAgency(), project.getClient());
         Invoice invoice = Invoice.builder()
                 .project(project)
                 .invoiceNumber("INV-DEP-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase())
                 .subtotal(depositSubtotal)
-                .cgst(cgst)
-                .sgst(sgst)
-                .igst(BigDecimal.ZERO)
-                .totalAmount(total)
+                .cgst(tax.cgst())
+                .sgst(tax.sgst())
+                .igst(tax.igst())
+                .totalAmount(tax.totalAmount())
                 .status(InvoiceStatus.SENT)
                 .dueDate(LocalDate.now().plusDays(7))
                 .isRecurring(false)

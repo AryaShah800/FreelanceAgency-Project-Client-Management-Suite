@@ -311,8 +311,8 @@ export default function Invoices() {
               <tbody className="divide-y divide-border/60 text-xs">
                 {invoices.map((inv) => {
                   const isIgst = inv.igst && inv.igst > 0;
-                  const taxLabel = isIgst ? 'IGST (18%)' : 'CGST+SGST (18%)';
                   const taxValue = isIgst ? inv.igst : (inv.cgst || 0) + (inv.sgst || 0);
+                  const taxLabel = taxValue > 0 ? (isIgst ? 'IGST (18%)' : 'CGST+SGST (18%)') : 'No GST';
 
                   return (
                     <tr key={inv.id} className="hover:bg-paper/30">
