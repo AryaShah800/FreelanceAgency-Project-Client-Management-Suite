@@ -182,7 +182,7 @@ class ProposalConversionServiceTest {
             i.setId(7L);
             return i;
         });
-        when(proposalRepository.save(any(Proposal.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(proposalRepository.saveAndFlush(any(Proposal.class))).thenAnswer(inv -> inv.getArgument(0));
 
         var result = service.convertProposalToProject("tok-123");
 

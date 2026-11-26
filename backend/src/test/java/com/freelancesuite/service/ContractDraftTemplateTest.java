@@ -57,4 +57,34 @@ class ContractDraftTemplateTest {
                 .setContent("<p>Budget guidance: INR 99999; payment schedule to be confirmed.</p>");
         assertThrows(IllegalArgumentException.class, () -> service.validateProposalOutput(draft, request));
     }
+
+    private static AiContractRequest minimalRequest() {
+        var request = new AiContractRequest();
+        request.setClientName("Synthetic Client");
+        request.setProjectScope("Deliver a specified implementation and its technical documentation.");
+        return request;
+    }
+
+    private static void setScope(com.freelancesuite.dto.AiProposalResponse draft, String html) {
+        draft.getSections().stream().filter(s -> s.getHeading().equals("Scope")).findFirst().orElseThrow().setContent(html);
+    }
+
+    @Test void guardrailsCatchFirstPersonAndPromisesAcrossLineBreaks() {
+        var service = new AIService(WebClient.builder(), new ObjectMapper());
+        var request = minimalRequest();
+        var draft = service.generateProposalContract(request, 101L);
+        // Multi-line HTML: the old String.matches(".*...") checks never fired on this.
+        setScope(draft, "<p>The engagement covers the build.</p>\n<p>We will deliver it.</p>");
+        assertThrows(IllegalArgumentException.class, () -> service.validateProposalOutput(draft, request));
+        setScope(draft, "<p>The engagement covers the build.</p>\n<p>Uptime is 100% for the term.</p>");
+        assertThrows(IllegalArgumentException.class, () -> service.validateProposalOutput(draft, request));
+    }
+
+    @Test void guardrailsAllowOrdinaryWordsLikeFullPayment() {
+        var service = new AIService(WebClient.builder(), new ObjectMapper());
+        var request = minimalRequest();
+        var draft = service.generateProposalContract(request, 102L);
+        setScope(draft, "<p>The engagement covers the build.</p>\n<p>Full payment is due on acceptance.</p>");
+        assertDoesNotThrow(() -> service.validateProposalOutput(draft, request));
+    }
 }

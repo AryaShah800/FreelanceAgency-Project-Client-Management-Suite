@@ -128,6 +128,12 @@ public class AIService {
         return generateFallbackProposal(request);
     }
 
+    private static final java.util.regex.Pattern FIRST_PERSON =
+            java.util.regex.Pattern.compile("\\b(we|our|my|i|us)\\b", java.util.regex.Pattern.CASE_INSENSITIVE);
+    // "100%" ends in a non-word character, so it needs a lookbehind instead of \b.
+    private static final java.util.regex.Pattern ABSOLUTE_PROMISE = java.util.regex.Pattern.compile(
+            "(?<![\\w.])100%|\\bguaranteed?\\b|\\bbug-free\\b", java.util.regex.Pattern.CASE_INSENSITIVE);
+
     void validateProposalOutput(AiProposalResponse proposal, AiContractRequest request) {
         if (proposal == null || proposal.getTitle() == null || proposal.getExecutiveSummary() == null
                 || proposal.getSections() == null || proposal.getSections().isEmpty()
@@ -150,13 +156,14 @@ public class AIService {
             }
         }
 
-        // 1. First-person words
-        if (fullText.matches(".*\\b(we|our|my|i|us)\\b.*")) {
+        // 1. First-person words. find() on the tag-free text: String.matches(".*...") never
+        //    matched multi-line HTML, because "." does not cross line breaks.
+        if (FIRST_PERSON.matcher(plainText).find()) {
             throw new IllegalArgumentException("Validation failed: Contains first-person words.");
         }
 
         // 2. Absolute promises
-        if (fullText.matches(".*\\b(100%|guaranteed|full|bug-free)\\b.*")) {
+        if (ABSOLUTE_PROMISE.matcher(plainText).find()) {
             throw new IllegalArgumentException("Validation failed: Contains absolute promises or liability traps.");
         }
 
