@@ -50,7 +50,7 @@ export default function Tasks() {
     fetchProjects();
     if (isOwner) fetchStaffMembers();
     fetchActiveTimer();
-    setupNetworkAndWebSocket();
+    setupNetwork();
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -58,20 +58,26 @@ export default function Tasks() {
     };
   }, []);
 
-  const setupNetworkAndWebSocket = () => {
+  // Include empty projects so their first task also triggers a refresh.
+  const projectIds = [...new Set([
+    ...tasks.map((task) => task.projectId),
+    ...projects.map((project) => project.id),
+  ].filter((id) => id != null))].sort((a, b) => a - b).join(',');
+
+  useEffect(() => {
+    if (!['OWNER', 'ADMIN', 'MEMBER'].includes(role) || !projectIds) return;
+    const topics = projectIds.split(',').map((id) => `/topic/project/${id}`);
+    topics.forEach((topic) => wsService.subscribe(topic, () => fetchTasks()));
+    return () => topics.forEach((topic) => wsService.unsubscribe(topic));
+  }, [projectIds, role]);
+
+  const setupNetwork = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     // Sync offline queue if present
     const savedQueue = JSON.parse(localStorage.getItem('offline_time_queue') || '[]');
     setPendingOfflineQueue(savedQueue);
-
-    // STOMP WebSocket Live Updates Subscription
-    if (isOwner) {
-      wsService.connect(() => {
-        wsService.subscribe('/topic/tasks', () => fetchTasks());
-      });
-    }
   };
 
   const handleOnline = async () => {

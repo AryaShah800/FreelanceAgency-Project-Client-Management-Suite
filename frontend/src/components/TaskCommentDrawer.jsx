@@ -22,17 +22,16 @@ export default function TaskCommentDrawer({ task, onClose }) {
         wsService.unsubscribe(`/topic/project/${task.projectId}/comments`);
       }
     };
-  }, [task]);
+  }, [task, user?.role]);
 
   const subscribeToLiveComments = () => {
-    if (!task || !task.projectId || user?.role !== 'OWNER') return;
+    if (!task || !task.projectId || !['OWNER', 'ADMIN', 'MEMBER'].includes(user?.role)) return;
     const topic = `/topic/project/${task.projectId}/comments`;
-    wsService.connect(() => {
-      wsService.subscribe(topic, (incomingComment) => {
-        setComments((prev) => {
-          if (prev.some((c) => c.id === incomingComment.id)) return prev;
-          return [...prev, incomingComment];
-        });
+    wsService.subscribe(topic, (incomingComment) => {
+      if (incomingComment.taskId !== task.id) return;
+      setComments((prev) => {
+        if (prev.some((c) => c.id === incomingComment.id)) return prev;
+        return [...prev, incomingComment];
       });
     });
   };

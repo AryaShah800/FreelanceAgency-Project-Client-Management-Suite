@@ -6,43 +6,51 @@ class WebSocketService {
     this.client = null;
     this.connected = false;
     this.subscriptions = {};
+    // Keep desired subscriptions across reconnects, including while connecting.
+    this.callbacks = {};
   }
 
-  connect(onConnectCallback) {
-    if (this.client && this.connected) {
-      if (onConnectCallback) onConnectCallback();
-      return;
-    }
+  connect() {
+    if (this.client?.active) return;
 
     const socketUrl = import.meta.env.VITE_WS_URL || getDefaultSocketUrl();
 
-    this.client = new Client({
+    const client = new Client({
       webSocketFactory: () => new SockJS(socketUrl),
-      connectHeaders: (() => {
+      beforeConnect: () => {
         const token = localStorage.getItem('token');
-        return token ? { Authorization: `Bearer ${token}` } : {};
-      })(),
+        client.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+      },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
+        if (this.client !== client) return;
         this.connected = true;
         console.log('STOMP WebSocket Connected Successfully');
-        if (onConnectCallback) onConnectCallback();
+        this.subscriptions = {};
+        Object.entries(this.callbacks).forEach(([topic, callback]) => {
+          this._doSubscribe(topic, callback);
+        });
+      },
+      onWebSocketClose: () => {
+        if (this.client !== client) return;
+        this.connected = false;
+        this.subscriptions = {};
       },
       onStompError: (frame) => {
         console.error('STOMP Error:', frame.headers['message']);
       },
     });
 
-    this.client.activate();
+    this.client = client;
+    client.activate();
   }
 
   subscribe(topic, callback) {
+    this.callbacks[topic] = callback;
     if (!this.client || !this.connected) {
-      this.connect(() => {
-        this._doSubscribe(topic, callback);
-      });
+      this.connect();
     } else {
       this._doSubscribe(topic, callback);
     }
@@ -54,18 +62,21 @@ class WebSocketService {
     }
 
     const sub = this.client.subscribe(topic, (message) => {
+      if (this.callbacks[topic] !== callback) return;
+      let payload;
       try {
-        const payload = JSON.parse(message.body);
-        callback(payload);
+        payload = JSON.parse(message.body);
       } catch (e) {
-        callback(message.body);
+        payload = message.body;
       }
+      callback(payload);
     });
 
     this.subscriptions[topic] = sub;
   }
 
   unsubscribe(topic) {
+    delete this.callbacks[topic];
     if (this.subscriptions[topic]) {
       this.subscriptions[topic].unsubscribe();
       delete this.subscriptions[topic];
@@ -73,10 +84,12 @@ class WebSocketService {
   }
 
   disconnect() {
-    if (this.client) {
-      this.client.deactivate();
-      this.connected = false;
-    }
+    const client = this.client;
+    this.client = null;
+    this.connected = false;
+    this.subscriptions = {};
+    this.callbacks = {};
+    if (client) client.deactivate();
   }
 }
 
