@@ -1,6 +1,7 @@
 package com.freelancesuite.dto;
 
 import com.freelancesuite.entity.enums.TaskStatus;
+import jakarta.validation.constraints.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -15,11 +16,15 @@ public class TaskDto {
     private String assignedToName;
 
     @NotBlank(message = "Title is required")
+    @Size(max = 255, message = "Title must be 255 characters or fewer")
     private String title;
 
     private String description;
     private TaskStatus status;
+    @PositiveOrZero(message = "Estimated hours cannot be negative")
+    @DecimalMax(value = "10000", message = "Estimated hours are too large")
     private Double estimatedHours;
+    @PositiveOrZero(message = "Actual hours cannot be negative")
     private Double actualHours;
     private Boolean isClientVisible;
     private LocalDateTime createdAt;

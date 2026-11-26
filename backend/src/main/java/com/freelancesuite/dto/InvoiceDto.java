@@ -1,5 +1,8 @@
 package com.freelancesuite.dto;
 
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import com.freelancesuite.entity.enums.InvoiceStatus;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -27,6 +30,8 @@ public class InvoiceDto {
     private LocalDate dueDate;
     private Boolean isRecurring;
 
+    @Valid
+    @NotEmpty(message = "At least one line item is required")
     private List<InvoiceLineItemDto> lineItems;
     private LocalDateTime createdAt;
 

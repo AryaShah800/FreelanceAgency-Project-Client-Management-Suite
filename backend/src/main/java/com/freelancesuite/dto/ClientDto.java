@@ -1,5 +1,7 @@
 package com.freelancesuite.dto;
 
+
+import jakarta.validation.constraints.*;
 import com.freelancesuite.entity.enums.DealStage;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -9,15 +11,21 @@ public class ClientDto {
     private Long id;
 
     @NotBlank(message = "Company name is required")
+    @Size(max = 255, message = "Company name must be 255 characters or fewer")
     private String companyName;
 
+    @Size(max = 255, message = "Contact person must be 255 characters or fewer")
     private String contactPerson;
 
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
 
+    @Size(max = 32, message = "Phone must be 32 characters or fewer")
     private String phone;
+    // Optional; when given it must be a 15-character GSTIN (state code, PAN, entity, Z, checksum).
+    @Pattern(regexp = "^$|^[0-9]{2}[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][Zz][0-9A-Za-z]$",
+            message = "GSTIN must be 15 characters, e.g. 27ABCDE1234F1Z5")
     private String gstin;
     private DealStage dealStage;
     private LocalDateTime createdAt;

@@ -1,14 +1,24 @@
 package com.freelancesuite.dto;
 
+
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class ExpenseDto {
     private Long id;
+    // Taken from the URL path (/projects/{projectId}/expenses), not the body.
     private Long projectId;
     private String projectTitle;
+    @NotBlank(message = "Description is required")
+    @Size(max = 255, message = "Description must be 255 characters or fewer")
     private String description;
+    @NotNull(message = "Amount is required")
+    @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
+    @Digits(integer = 12, fraction = 2, message = "Amount can have at most 2 decimal places")
     private BigDecimal amount;
+    @NotBlank(message = "Category is required")
+    @Size(max = 255, message = "Category must be 255 characters or fewer")
     private String category;
     private LocalDateTime createdAt;
 
