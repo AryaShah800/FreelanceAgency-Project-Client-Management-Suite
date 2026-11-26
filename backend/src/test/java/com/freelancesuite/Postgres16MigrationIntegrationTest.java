@@ -32,14 +32,21 @@ class Postgres16MigrationIntegrationTest {
                 () -> "This CI migration test must run against PostgreSQL 16; connected to " + serverVersion);
         flyway.validate();
         assertTrue(flyway.info().current() != null
-                        && "2".equals(flyway.info().current().getVersion().getVersion()),
-                "Flyway V2 must be applied to the clean PostgreSQL 16 database.");
+                        && "3".equals(flyway.info().current().getVersion().getVersion()),
+                "Flyway V3 must be applied to the clean PostgreSQL 16 database.");
         assertTableExists("agencies");
         assertTableExists("app_users");
         assertTableExists("proposals");
         assertTableExists("invoices");
         assertTableExists("contracts");
         assertColumnExists("proposals", "client_email");
+        String invitationRoleConstraint = jdbcTemplate.queryForObject(
+                "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                        + "WHERE conrelid = 'agency_invitations'::regclass "
+                        + "AND conname = 'agency_invitations_role_check'",
+                String.class);
+        assertTrue(invitationRoleConstraint != null && invitationRoleConstraint.contains("'CLIENT'"),
+                "Client invitations must be allowed by the role constraint.");
     }
 
     private void assertTableExists(String tableName) {

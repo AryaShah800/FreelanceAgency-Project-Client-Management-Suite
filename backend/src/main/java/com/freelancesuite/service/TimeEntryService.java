@@ -9,8 +9,10 @@ import com.freelancesuite.repository.TaskRepository;
 import com.freelancesuite.repository.TimeEntryRepository;
 import com.freelancesuite.security.UserPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -51,6 +53,7 @@ public class TimeEntryService {
             throw new IllegalArgumentException("Cannot track time on a completed task");
         }
 
+        // Starting a new timer switches tasks: the user's running timer is stopped first.
         Optional<TimeEntry> runningTimer = timeEntryRepository.findByUserIdAndEndTimeIsNull(userPrincipal.getId());
         if (runningTimer.isPresent()) {
             stopTimer(runningTimer.get().getId(), userPrincipal);
@@ -77,6 +80,13 @@ public class TimeEntryService {
 
         if (!entry.getUser().getId().equals(userPrincipal.getId())) {
             throw new IllegalArgumentException("Unauthorized time entry modification");
+        }
+
+        if (Boolean.TRUE.equals(entry.getIsBilled())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Time entry already billed");
+        }
+        if (entry.getEndTime() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Timer already stopped");
         }
 
         LocalDateTime now = LocalDateTime.now();
