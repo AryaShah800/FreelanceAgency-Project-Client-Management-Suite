@@ -1,8 +1,8 @@
 package com.freelancesuite.controller;
 
+import com.freelancesuite.dto.PaymentDto;
 import com.freelancesuite.dto.PaymentVerificationRequest;
 import com.freelancesuite.security.UserPrincipal;
-import com.freelancesuite.entity.Payment;
 import com.freelancesuite.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +35,7 @@ public class PaymentController {
 
     @PostMapping("/razorpay/verify")
     @PreAuthorize("hasRole('CLIENT')")
-    public ResponseEntity<Payment> verifyPayment(
+    public ResponseEntity<PaymentDto> verifyPayment(
             @Valid @RequestBody PaymentVerificationRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         return ResponseEntity.ok(paymentService.verifyAndRecordPayment(request, userPrincipal));

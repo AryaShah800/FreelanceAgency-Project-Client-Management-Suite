@@ -2,6 +2,7 @@ package com.freelancesuite.service;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import com.freelancesuite.dto.PaymentDto;
 import com.freelancesuite.dto.PaymentVerificationRequest;
 import com.freelancesuite.entity.Invoice;
 import com.freelancesuite.entity.Payment;
@@ -99,7 +100,7 @@ public class PaymentService {
      * server-to-server source of truth that covers that gap.
      */
     @Transactional
-    public Payment verifyAndRecordPayment(PaymentVerificationRequest request, UserPrincipal userPrincipal) {
+    public PaymentDto verifyAndRecordPayment(PaymentVerificationRequest request, UserPrincipal userPrincipal) {
         ensureConfigured();
         Invoice invoice = requireClientInvoice(request.getInvoiceId(), userPrincipal);
         requirePayableInvoice(invoice);
@@ -126,7 +127,9 @@ public class PaymentService {
             throw new IllegalArgumentException("Invoice mismatch! This payment does not belong to the requested invoice.");
         }
 
-        return recordPaymentIfAbsent(invoice, request.getRazorpayPaymentId(), request.getRazorpayOrderId());
+        Payment payment = recordPaymentIfAbsent(invoice, request.getRazorpayPaymentId(), request.getRazorpayOrderId());
+        return new PaymentDto(payment.getId(), payment.getInvoice().getId(), payment.getAmount(),
+                payment.getRazorpayPaymentId(), payment.getRazorpayOrderId(), payment.getPaidAt());
     }
 
     /**
