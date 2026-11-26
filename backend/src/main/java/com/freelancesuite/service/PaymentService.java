@@ -15,14 +15,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
@@ -33,6 +34,7 @@ public class PaymentService {
 
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final PaymentRecordingService paymentRecordingService;
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
     private final String razorpayKeyId;
@@ -41,12 +43,14 @@ public class PaymentService {
 
     @Autowired
     public PaymentService(InvoiceRepository invoiceRepository, PaymentRepository paymentRepository,
+                          PaymentRecordingService paymentRecordingService,
                           WebClient.Builder webClientBuilder, ObjectMapper objectMapper,
                           @Value("${app.razorpay.key-id:}") String razorpayKeyId,
                           @Value("${app.razorpay.key-secret:}") String razorpayKeySecret,
                           @Value("${app.razorpay.webhook-secret:}") String razorpayWebhookSecret) {
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
+        this.paymentRecordingService = paymentRecordingService;
         this.webClientBuilder = webClientBuilder;
         this.objectMapper = objectMapper;
         this.razorpayKeyId = razorpayKeyId;
@@ -76,7 +80,7 @@ public class PaymentService {
                 ))
                 .retrieve()
                 .bodyToMono(Map.class)
-                .block();
+                .block(Duration.ofSeconds(15));
 
         if (response == null || !response.containsKey("id")) {
             throw new IllegalStateException("Could not create Razorpay order");
@@ -99,11 +103,9 @@ public class PaymentService {
      * invoice would never be reconciled. handleWebhookEvent() below is the
      * server-to-server source of truth that covers that gap.
      */
-    @Transactional
     public PaymentDto verifyAndRecordPayment(PaymentVerificationRequest request, UserPrincipal userPrincipal) {
         ensureConfigured();
         Invoice invoice = requireClientInvoice(request.getInvoiceId(), userPrincipal);
-        requirePayableInvoice(invoice);
         String payload = request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId();
         if (!HmacSignatureUtil.verify(payload, razorpayKeySecret, request.getRazorpaySignature())) {
             throw new IllegalArgumentException("Payment signature verification failed");
@@ -116,7 +118,7 @@ public class PaymentService {
                 .headers(headers -> headers.setBasicAuth(razorpayKeyId, razorpayKeySecret, StandardCharsets.UTF_8))
                 .retrieve()
                 .bodyToMono(Map.class)
-                .block();
+                .block(Duration.ofSeconds(15));
 
         if (orderInfo == null) {
             throw new IllegalArgumentException("Could not verify Razorpay order details");
@@ -127,8 +129,23 @@ public class PaymentService {
             throw new IllegalArgumentException("Invoice mismatch! This payment does not belong to the requested invoice.");
         }
 
-        Payment payment = recordPaymentIfAbsent(invoice, request.getRazorpayPaymentId(), request.getRazorpayOrderId());
-        return new PaymentDto(payment.getId(), payment.getInvoice().getId(), payment.getAmount(),
+        requireMatchingAmountAndCurrency(invoice, orderInfo.get("amount"), orderInfo.get("currency"));
+
+        Map paymentInfo = webClient().get()
+                .uri("/payments/" + request.getRazorpayPaymentId())
+                .headers(headers -> headers.setBasicAuth(razorpayKeyId, razorpayKeySecret, StandardCharsets.UTF_8))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block(Duration.ofSeconds(15));
+        if (paymentInfo == null || !request.getRazorpayOrderId().equals(paymentInfo.get("order_id"))
+                || !"captured".equals(paymentInfo.get("status"))) {
+            throw new IllegalArgumentException("Could not verify captured Razorpay payment");
+        }
+        BigDecimal capturedAmount = requireMatchingAmountAndCurrency(
+                invoice, paymentInfo.get("amount"), paymentInfo.get("currency"));
+
+        Payment payment = recordPaymentIfAbsent(invoice, request.getRazorpayPaymentId(), request.getRazorpayOrderId(), capturedAmount);
+        return new PaymentDto(payment.getId(), invoice.getId(), payment.getAmount(),
                 payment.getRazorpayPaymentId(), payment.getRazorpayOrderId(), payment.getPaidAt());
     }
 
@@ -140,7 +157,6 @@ public class PaymentService {
      * @param rawBody        the exact raw request body, unmodified (needed for signature verification)
      * @param signatureHeader the X-Razorpay-Signature header value
      */
-    @Transactional
     public void handleWebhookEvent(String rawBody, String signatureHeader) {
         if (razorpayWebhookSecret == null || razorpayWebhookSecret.isBlank()) {
             log.warn("Received a Razorpay webhook call but RAZORPAY_WEBHOOK_SECRET is not configured.");
@@ -187,7 +203,22 @@ public class PaymentService {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new IllegalArgumentException("Webhook references an unknown invoice: " + invoiceId));
 
-        recordPaymentIfAbsent(invoice, razorpayPaymentId, razorpayOrderId);
+        BigDecimal capturedAmount;
+        try {
+            capturedAmount = requireMatchingAmountAndCurrency(invoice,
+                    paymentEntity.path("amount").asText(null), paymentEntity.path("currency").asText(null));
+        } catch (IllegalArgumentException ex) {
+            log.warn("Ignoring payment.captured webhook with invalid amount or currency; paymentId={}, invoiceId={}",
+                    razorpayPaymentId, invoiceId);
+            return;
+        }
+        if (!isPayableInvoice(invoice)) {
+            log.warn("Ignoring payment.captured webhook for a non-payable invoice; paymentId={}, invoiceId={}",
+                    razorpayPaymentId, invoiceId);
+            return;
+        }
+
+        recordPaymentIfAbsent(invoice, razorpayPaymentId, razorpayOrderId, capturedAmount);
     }
 
     /**
@@ -195,25 +226,36 @@ public class PaymentService {
      * verify() call and the webhook, or the webhook may be retried by Razorpay.
      * Safe to call more than once for the same razorpayPaymentId.
      */
-    private Payment recordPaymentIfAbsent(Invoice invoice, String razorpayPaymentId, String razorpayOrderId) {
+    private Payment recordPaymentIfAbsent(Invoice invoice, String razorpayPaymentId, String razorpayOrderId,
+                                          BigDecimal capturedAmount) {
         Optional<Payment> existing = paymentRepository.findByRazorpayPaymentId(razorpayPaymentId);
         if (existing.isPresent()) {
             return existing.get();
         }
 
-        if (invoice.getStatus() != InvoiceStatus.PAID) {
-            invoice.setStatus(InvoiceStatus.PAID);
-            invoiceRepository.save(invoice);
+        requirePayableInvoice(invoice);
+        try {
+            return paymentRecordingService.insertPayment(invoice, razorpayPaymentId, razorpayOrderId, capturedAmount);
+        } catch (DataIntegrityViolationException ex) {
+            return paymentRepository.findByRazorpayPaymentId(razorpayPaymentId).orElseThrow(() -> ex);
         }
+    }
 
-        Payment payment = Payment.builder()
-                .invoice(invoice)
-                .amount(invoice.getTotalAmount())
-                .razorpayPaymentId(razorpayPaymentId)
-                .razorpayOrderId(razorpayOrderId)
-                .build();
-
-        return paymentRepository.save(payment);
+    private BigDecimal requireMatchingAmountAndCurrency(Invoice invoice, Object amount, Object currency) {
+        if (!"INR".equals(currency) || amount == null) {
+            throw new IllegalArgumentException("Payment amount or currency does not match the invoice");
+        }
+        BigDecimal amountInPaise;
+        try {
+            amountInPaise = new BigDecimal(amount.toString());
+            amountInPaise.longValueExact();
+        } catch (NumberFormatException | ArithmeticException ex) {
+            throw new IllegalArgumentException("Invalid payment amount", ex);
+        }
+        if (amountInPaise.compareTo(invoice.getTotalAmount().movePointRight(2)) != 0) {
+            throw new IllegalArgumentException("Payment amount or currency does not match the invoice");
+        }
+        return amountInPaise.movePointLeft(2);
     }
 
     private Invoice requireClientInvoice(Long invoiceId, UserPrincipal userPrincipal) {
@@ -233,11 +275,15 @@ public class PaymentService {
     }
 
     private void requirePayableInvoice(Invoice invoice) {
-        if (invoice.getStatus() != InvoiceStatus.SENT && invoice.getStatus() != InvoiceStatus.OVERDUE) {
+        if (!isPayableInvoice(invoice)) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.CONFLICT,
                     "Only sent or overdue invoices can be paid");
         }
+    }
+
+    private boolean isPayableInvoice(Invoice invoice) {
+        return invoice.getStatus() == InvoiceStatus.SENT || invoice.getStatus() == InvoiceStatus.OVERDUE;
     }
 
     private void ensureConfigured() {

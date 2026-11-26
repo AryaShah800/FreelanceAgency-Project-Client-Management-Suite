@@ -30,7 +30,7 @@ class PaymentConfigurationTest {
     @Test
     void disabledCheckoutReturnsServiceUnavailableBeforeLookingUpInvoice() {
         PaymentService service = new PaymentService(
-                null, null, null, new ObjectMapper(), "", "", "");
+                null, null, null, null, new ObjectMapper(), "", "", "");
 
         ResponseStatusException error = assertThrows(ResponseStatusException.class,
                 () -> service.createRazorpayOrder(42L, null));
@@ -40,7 +40,7 @@ class PaymentConfigurationTest {
 
     @Test
     void checkoutStaysDisabledUntilWebhookSecretIsConfigured() {
-        PaymentService service = new PaymentService(null, null, null, new ObjectMapper(),
+        PaymentService service = new PaymentService(null, null, null, null, new ObjectMapper(),
                 "rzp_test_key", "test-key-secret", "");
 
         ResponseStatusException error = assertThrows(ResponseStatusException.class,
@@ -53,7 +53,7 @@ class PaymentConfigurationTest {
     void draftInvoiceCannotStartPaymentEvenWhenProviderIsConfigured() {
         InvoiceRepository invoices = mock(InvoiceRepository.class);
         PaymentRepository payments = mock(PaymentRepository.class);
-        PaymentService service = new PaymentService(invoices, payments, null,
+        PaymentService service = new PaymentService(invoices, payments, null, null,
                 new ObjectMapper(), "rzp_test_key", "test-key-secret", "webhook-secret");
         Agency agency = Agency.builder().name("Test agency").build();
         agency.setId(7L);

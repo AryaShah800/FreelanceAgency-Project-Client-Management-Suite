@@ -3,6 +3,7 @@ package com.freelancesuite.controller;
 import com.freelancesuite.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -33,7 +34,7 @@ public class PaymentWebhookController {
         try {
             paymentService.handleWebhookEvent(new String(rawBody, java.nio.charset.StandardCharsets.UTF_8), signature);
             return ResponseEntity.ok().build();
-        } catch (SecurityException e) {
+        } catch (AccessDeniedException e) {
             return ResponseEntity.status(403).build();
         }
     }
