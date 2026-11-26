@@ -1,5 +1,7 @@
 package com.freelancesuite.dto;
 
+
+import jakarta.validation.constraints.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -15,11 +17,13 @@ public class ProjectDto {
     private String clientName;
 
     @NotBlank(message = "Title is required")
+    @Size(max = 255, message = "Title must be 255 characters or fewer")
     private String title;
 
     private String description;
 
     @NotNull(message = "Budget is required")
+    @DecimalMin(value = "0", message = "Budget cannot be negative")
     private BigDecimal budget;
 
     private LocalDate deadline;

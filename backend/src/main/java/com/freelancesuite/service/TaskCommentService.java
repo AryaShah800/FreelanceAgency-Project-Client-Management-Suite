@@ -48,7 +48,8 @@ public class TaskCommentService {
         AppUser author = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        String safeContent = org.springframework.web.util.HtmlUtils.htmlEscape(content);
+        // Stored as plain text: React escapes on render. Escaping here showed "&#39;" in the UI.
+        String safeContent = content == null ? "" : content.trim();
 
         TaskComment comment = TaskComment.builder()
                 .task(task)
