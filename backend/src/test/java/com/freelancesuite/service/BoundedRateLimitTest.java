@@ -28,12 +28,37 @@ class BoundedRateLimitTest {
     void aiGenerationLimitAllowsTenRequestsThenReturnsTooManyRequests() {
         AIService service = new AIService(mock(WebClient.Builder.class), new ObjectMapper());
 
-        for (int i = 0; i < 10; i++) service.enforceRateLimit(101L);
+        long t = 1_000_000L;
+        // Requests 11 s apart clear the cooldown; the 10-per-10-minutes window still applies.
+        for (int i = 0; i < 10; i++) service.enforceRateLimit(101L, t + i * 11_000L);
 
+        long eleventh = t + 10 * 11_000L;
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> service.enforceRateLimit(101L));
+                () -> service.enforceRateLimit(101L, eleventh));
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatusCode());
-        service.enforceRateLimit(102L);
+        service.enforceRateLimit(102L, eleventh);
+    }
+
+    @Test
+    void aiGenerationHasACooldownBetweenDrafts() {
+        AIService service = new AIService(mock(WebClient.Builder.class), new ObjectMapper());
+        service.enforceRateLimit(103L, 1_000L);
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, assertThrows(ResponseStatusException.class,
+                () -> service.enforceRateLimit(103L, 5_000L)).getStatusCode());
+        service.enforceRateLimit(103L, 12_000L);
+    }
+
+    @Test
+    void aiGenerationStopsAtTheDailyCap() {
+        AIService service = new AIService(mock(WebClient.Builder.class), new ObjectMapper());
+        long t = 0L;
+        // 50 drafts spread across 10-minute windows (5 per window, 2 minutes apart).
+        for (int i = 0; i < 50; i++) service.enforceRateLimit(104L, t + i * 120_000L);
+        long next = t + 50 * 120_000L;
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.enforceRateLimit(104L, next));
+        assertEquals("Daily AI generation limit reached.", exception.getReason());
+        service.enforceRateLimit(104L, t + 24 * 60 * 60 * 1000L + 1);
     }
 
     @Test

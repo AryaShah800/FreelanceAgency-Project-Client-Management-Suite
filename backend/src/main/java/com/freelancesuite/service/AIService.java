@@ -38,12 +38,18 @@ public class AIService {
 
 
 
-    private final Cache<Long, AiUsageWindow> usageWindows = Caffeine.newBuilder()
+    // One entry per agency holds every AI limit, updated atomically in a single compute().
+    private final Cache<Long, AiUsage> usage = Caffeine.newBuilder()
             .maximumSize(100_000)
-            .expireAfterAccess(Duration.ofMinutes(20))
+            .expireAfterAccess(Duration.ofHours(25))
             .build();
+    private static final long COOLDOWN_MS = 10_000; // 10 seconds between drafts
     private static final int MAX_AI_REQUESTS = 10;
     private static final long RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+    private static final long DAY_MS = 24 * 60 * 60 * 1000;
+
+    @Value("${app.ai.daily-generation-limit:50}")
+    private int dailyGenerationLimit = 50;
 
     @Autowired
     public AIService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
@@ -170,21 +176,41 @@ public class AIService {
     }
 
     void enforceRateLimit(Long agencyId) {
-        long now = System.currentTimeMillis();
-        usageWindows.asMap().compute(agencyId, (key, current) -> {
-            if (current == null || now - current.windowStartedAtMillis() >= RATE_LIMIT_WINDOW_MS) {
-                return new AiUsageWindow(1, now);
+        enforceRateLimit(agencyId, System.currentTimeMillis());
+    }
+
+    /**
+     * A 10 s cooldown, at most 10 drafts per 10 minutes and a daily cap, checked and
+     * recorded together so concurrent requests cannot slip past any of them.
+     */
+    void enforceRateLimit(Long agencyId, long now) {
+        usage.asMap().compute(agencyId, (key, current) -> {
+            if (current == null) return new AiUsage(now, 1, now, 1, now);
+            if (now - current.lastRequestAt() < COOLDOWN_MS) {
+                throw tooManyRequests("Please wait a few seconds before generating another proposal.");
             }
-            if (current.count() >= MAX_AI_REQUESTS) {
-                throw new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.TOO_MANY_REQUESTS,
-                        "AI Generation rate limit exceeded (Max 10 per 10 minutes). Try again later.");
+            boolean newWindow = now - current.windowStartedAt() >= RATE_LIMIT_WINDOW_MS;
+            int windowCount = newWindow ? 0 : current.windowCount();
+            if (windowCount >= MAX_AI_REQUESTS) {
+                throw tooManyRequests("AI Generation rate limit exceeded (Max 10 per 10 minutes). Try again later.");
             }
-            return new AiUsageWindow(current.count() + 1, current.windowStartedAtMillis());
+            boolean newDay = now - current.dayStartedAt() >= DAY_MS;
+            int dayCount = newDay ? 0 : current.dayCount();
+            if (dayCount >= Math.max(1, dailyGenerationLimit)) {
+                throw tooManyRequests("Daily AI generation limit reached.");
+            }
+            return new AiUsage(now, windowCount + 1, newWindow ? now : current.windowStartedAt(),
+                    dayCount + 1, newDay ? now : current.dayStartedAt());
         });
     }
 
-    private record AiUsageWindow(int count, long windowStartedAtMillis) { }
+    private static org.springframework.web.server.ResponseStatusException tooManyRequests(String message) {
+        return new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, message);
+    }
+
+    private record AiUsage(long lastRequestAt, int windowCount, long windowStartedAt,
+                           int dayCount, long dayStartedAt) { }
 
     private String extractJson(String text) {
         if (text == null || text.isBlank()) return "{}";
