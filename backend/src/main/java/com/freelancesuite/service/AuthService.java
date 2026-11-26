@@ -51,7 +51,17 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
+        return login(request, "unknown");
+    }
+
+    /**
+     * Failed attempts are counted per (client IP, email). Keying by email alone let anyone
+     * lock a known user out of their account by sending five wrong passwords.
+     */
+    @Transactional(readOnly = true)
+    public AuthResponse login(LoginRequest request, String clientIp) {
         String email = normalizeEmail(request.getEmail());
+        String lockoutKey = (clientIp == null || clientIp.isBlank() ? "unknown" : clientIp) + "|" + email;
         request.setEmail(email);
         long now = System.currentTimeMillis();
         // The public demo has one intentionally shared account. Account-wide
@@ -59,13 +69,13 @@ public class AuthService {
         boolean sharedDemoAccount = demoProfile && "demo@agency.test".equals(email);
 
         if (!sharedDemoAccount) {
-            FailedLoginState failedLogin = failedLogins.getIfPresent(email);
+            FailedLoginState failedLogin = failedLogins.getIfPresent(lockoutKey);
             if (failedLogin != null && now - failedLogin.lastFailureAtMillis() < LOGIN_BLOCK_MS) {
                 if (failedLogin.attempts() >= MAX_LOGIN_ATTEMPTS) {
-                    throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Account locked due to too many failed attempts. Try again in 15 minutes.");
+                    throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many failed sign-in attempts. Try again in 15 minutes.");
                 }
             } else if (failedLogin != null) {
-                failedLogins.invalidate(email);
+                failedLogins.invalidate(lockoutKey);
             }
         }
 
@@ -75,10 +85,10 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
             // Success - reset attempts
-            if (!sharedDemoAccount) failedLogins.invalidate(email);
+            if (!sharedDemoAccount) failedLogins.invalidate(lockoutKey);
         } catch (org.springframework.security.core.AuthenticationException ex) {
             if (!sharedDemoAccount) {
-                failedLogins.asMap().compute(email, (key, current) -> {
+                failedLogins.asMap().compute(lockoutKey, (key, current) -> {
                     if (current == null || now - current.lastFailureAtMillis() >= LOGIN_BLOCK_MS) {
                         return new FailedLoginState(1, now);
                     }

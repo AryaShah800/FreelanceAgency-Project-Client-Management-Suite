@@ -1,3 +1,11 @@
+server:
+  tomcat:
+    remoteip:
+      # Render's load balancer reaches the app from private addresses. Trust those (Spring
+      # Boot's default list) so getRemoteAddr() is the visitor from X-Forwarded-For; with
+      # loopback only, every visitor shared one rate-limit bucket.
+      internal-proxies: 10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|100\.6[4-9]{1}\.\d{1,3}\.\d{1,3}|100\.[7-9]{1}\d{1}\.\d{1,3}\.\d{1,3}|100\.1[0-1]{1}\d{1}\.\d{1,3}\.\d{1,3}|100\.12[0-7]{1}\.\d{1,3}\.\d{1,3}|172\.1[6-9]{1}\.\d{1,3}\.\d{1,3}|172\.2[0-9]{1}\.\d{1,3}\.\d{1,3}|172\.3[0-1]{1}\.\d{1,3}\.\d{1,3}|0:0:0:0:0:0:0:1|::1
+
 spring:
   datasource:
     # Demo runs on disposable in-memory data and must never connect to a real agency DB.
