@@ -134,7 +134,8 @@ public class PdfGeneratorUtil {
 
             document.close();
         } catch (DocumentException ex) {
-            ex.printStackTrace();
+            // Fail loudly: returning the partial bytes sent users a corrupt PDF with HTTP 200.
+            throw new IllegalStateException("Could not generate the PDF", ex);
         }
 
         return new ByteArrayInputStream(out.toByteArray());
@@ -191,7 +192,8 @@ public class PdfGeneratorUtil {
             document.add(Chunk.NEWLINE);
 
             document.add(new Paragraph("3. Financial Terms", boldFont));
-            document.add(new Paragraph("Estimated budget: Rs. " + proposal.getEstimatedBudget() + " + 18% GST", regularFont));
+            // The budget already includes GST, so there is no "+ 18% GST" suffix.
+            document.add(new Paragraph("Estimated budget (inclusive of applicable GST): Rs. " + proposal.getEstimatedBudget(), regularFont));
             document.add(new Paragraph(nullToEmpty(proposal.getPaymentTerms()), regularFont));
             document.add(Chunk.NEWLINE);
 

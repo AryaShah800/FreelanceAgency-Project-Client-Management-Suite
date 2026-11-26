@@ -169,7 +169,13 @@ public class ProposalConversionService {
         proposal.setDepositInvoiceNumber(firstInvoice.getInvoiceNumber());
         proposal.setDepositAmount(firstInvoice.getTotalAmount());
 
-        proposalRepository.save(proposal);
+        try {
+            proposalRepository.saveAndFlush(proposal);
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+            // Two conversions raced; the @Version check let only one win.
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Proposal has already been converted");
+        }
 
         // 5. Log Audit Event
         Long finalAgencyId = client.getAgency() != null ? client.getAgency().getId() : agencyIdOf(proposal);
