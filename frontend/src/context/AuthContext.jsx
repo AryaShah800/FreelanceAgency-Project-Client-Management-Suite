@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
+import { wsService } from '../services/websocket';
 
 const AuthContext = createContext();
 
@@ -62,6 +63,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    wsService.disconnect();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);

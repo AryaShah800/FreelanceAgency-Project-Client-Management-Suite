@@ -1,5 +1,6 @@
 package com.freelancesuite.security;
 
+import com.freelancesuite.entity.enums.Role;
 import com.freelancesuite.repository.ProjectRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
@@ -26,14 +27,14 @@ import java.util.regex.Pattern;
  * CONNECT — any client on an allowed origin could open a session and
  * subscribe to any project's comment stream. This closes that gap:
  *   - CONNECT requires a valid Bearer JWT in the STOMP "Authorization" header.
- *   - SUBSCRIBE to /topic/project/{id}/comments is checked against the
- *     authenticated user's agency, mirroring TaskCommentService's HTTP-side check.
+ *   - SUBSCRIBE allows only the task and comment project feeds for internal
+ *     users in the project's agency; all other destinations are denied.
  */
 @Component
 public class JwtChannelInterceptor implements ChannelInterceptor {
 
     private static final Pattern PROJECT_SECURED_TOPIC =
-            Pattern.compile("^/topic/project/(\\d+)(/.*)?$");
+            Pattern.compile("^/topic/project/(\\d+)(/comments)?$");
 
     private final JwtTokenProvider tokenProvider;
     private final CustomUserDetailsService userDetailsService;
@@ -87,37 +88,33 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     private void authorizeSubscription(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
         if (destination == null) {
-            return;
+            throw new AccessDeniedException("A subscription destination is required");
         }
         Object principalObject = accessor.getUser();
         if (!(principalObject instanceof UsernamePasswordAuthenticationToken authentication)
                 || !(authentication.getPrincipal() instanceof UserPrincipal userPrincipal)) {
             throw new AccessDeniedException("You must be authenticated to subscribe to this topic");
         }
-        // These shared feeds contain agency-wide updates. Only Owners may subscribe;
-        // staff and clients use their scoped HTTP queries instead.
-        if (destination.equals("/topic/tasks") || destination.startsWith("/topic/project/")) {
-            if (userPrincipal.getRole() != com.freelancesuite.entity.enums.Role.OWNER) {
-                throw new AccessDeniedException("This live feed is available to the agency owner only");
-            }
-        }
         Matcher matcher = PROJECT_SECURED_TOPIC.matcher(destination);
         if (!matcher.matches()) {
-            // Not a secured project topic — nothing extra to check here.
-            return;
+            throw new AccessDeniedException("This subscription destination is not allowed");
         }
 
-        Long projectId = Long.valueOf(matcher.group(1));
-        com.freelancesuite.entity.Project project = projectRepository.findByIdAndAgencyId(projectId, userPrincipal.getAgencyId())
-                .orElse(null);
-
-        if (project == null) {
-            throw new AccessDeniedException("You cannot subscribe to comments for this project");
+        // Both feeds include tasks hidden from clients, including their comment
+        // content. Even the project's own client cannot safely join these feeds.
+        Role role = userPrincipal.getRole();
+        if (role != Role.OWNER && role != Role.ADMIN && role != Role.MEMBER) {
+            throw new AccessDeniedException("This live feed is available to internal users only");
         }
 
-        boolean isClient = userPrincipal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
-        if (isClient && !project.getClient().getEmail().equalsIgnoreCase(userPrincipal.getEmail())) {
-            throw new AccessDeniedException("You cannot subscribe to comments for this project");
+        Long projectId;
+        try {
+            projectId = Long.valueOf(matcher.group(1));
+        } catch (NumberFormatException ex) {
+            throw new AccessDeniedException("Invalid project subscription destination");
+        }
+        if (projectRepository.findByIdAndAgencyId(projectId, userPrincipal.getAgencyId()).isEmpty()) {
+            throw new AccessDeniedException("You cannot subscribe to this project's live feeds");
         }
     }
 

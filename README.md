@@ -35,8 +35,10 @@ the live comment feed, Razorpay Checkout.js.
 
 - **CRM pipeline** — clients tracked through deal stages (Lead → Contacted →
   Proposal Sent → Won/Lost).
-- **Projects & tasks** — Kanban-style task board with live, persisted comments
-  broadcast over WebSocket to everyone viewing the same project.
+- **Projects & tasks** — Kanban-style task board that updates live, with persisted
+  comments broadcast over WebSocket to the agency team (owner, admins, members)
+  viewing the same project. Clients are kept off these feeds because they can
+  include internal-only tasks; subscriptions are deny-by-default.
 - **GST invoicing** — CGST/SGST/IGST-aware invoices, rendered as downloadable
   PDFs.
 - **Online payments** — Razorpay Checkout for client-side payment, backed by a
