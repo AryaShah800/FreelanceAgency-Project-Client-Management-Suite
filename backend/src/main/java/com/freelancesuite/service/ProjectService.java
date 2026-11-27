@@ -16,7 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -57,7 +60,9 @@ public class ProjectService {
             projects = projectRepository.findByAgencyId(userPrincipal.getAgencyId());
         }
 
-        return projects.stream().map(project -> mapToDto(project, userPrincipal.getRole())).collect(Collectors.toList());
+        Map<Long, BigDecimal> loggedValues = getLoggedValues(projects, userPrincipal.getAgencyId());
+        return projects.stream().map(project -> mapToDto(project, userPrincipal.getRole(),
+                loggedValues.getOrDefault(project.getId(), BigDecimal.ZERO.setScale(2)))).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -144,6 +149,21 @@ public class ProjectService {
     }
 
     private ProjectDto mapToDto(Project project, Role viewerRole) {
+        Map<Long, BigDecimal> loggedValues = getLoggedValues(List.of(project), project.getClient().getAgency().getId());
+        return mapToDto(project, viewerRole, loggedValues.getOrDefault(project.getId(), BigDecimal.ZERO.setScale(2)));
+    }
+
+    private Map<Long, BigDecimal> getLoggedValues(List<Project> projects, Long agencyId) {
+        if (projects.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
+        return timeEntryRepository.sumLoggedValueByProjectIds(agencyId, projectIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row ->
+                        BigDecimal.valueOf(((Number) row[1]).doubleValue()).setScale(2, RoundingMode.HALF_UP)));
+    }
+
+    private ProjectDto mapToDto(Project project, Role viewerRole, BigDecimal loggedValue) {
         List<UserDto> members = project.getTeamMembers().stream().map(u -> UserDto.builder()
                 .id(u.getId())
                 .name(u.getName())
@@ -157,6 +177,8 @@ public class ProjectService {
                 .title(project.getTitle())
                 .description(project.getDescription())
                 .budget(viewerRole == Role.MEMBER ? null : project.getBudget())
+                // Hidden from staff like the budget: rates x hours would reveal colleagues' hourly rates.
+                .loggedValue(viewerRole == Role.MEMBER ? null : loggedValue)
                 .deadline(project.getDeadline())
                 .teamMembers(members)
                 .createdAt(project.getCreatedAt())

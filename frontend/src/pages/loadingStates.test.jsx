@@ -5,12 +5,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../services/api', () => ({ default: { get: vi.fn() } }));
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ user: { name: 'Demo', role: 'OWNER', agencyName: 'Demo Agency' }, logout: vi.fn() }),
+  useAuth: vi.fn(),
 }));
 vi.mock('../components/Navbar', () => ({ default: () => <header /> }));
 vi.mock('../components/DashboardCharts', () => ({ default: () => <div data-testid="charts" /> }));
 
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import Dashboard from './Dashboard';
 import Clients from './Clients';
 
@@ -27,10 +28,30 @@ const renderPage = (ui) => render(<MemoryRouter>{ui}</MemoryRouter>);
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   api.get.mockReset();
+  useAuth.mockReturnValue({ user: { name: 'Demo', role: 'OWNER', agencyName: 'Demo Agency' }, logout: vi.fn() });
 });
 afterEach(() => vi.useRealTimers());
 
 describe('Dashboard loading states', () => {
+  it('shows client budget burn from project logged values, with missing values treated as zero', async () => {
+    useAuth.mockReturnValue({ user: { name: 'Client', role: 'CLIENT' } });
+    const clientData = {
+      '/projects': [
+        { id: 1, budget: 1000, loggedValue: 181.68 },
+        { id: 2, budget: 500, loggedValue: 118.32 },
+        { id: 3, budget: 500 },
+      ],
+      '/tasks': [{ id: 1, status: 'DONE', actualHours: 999 }],
+      '/invoices': [],
+    };
+    api.get.mockImplementation((url) => Promise.resolve({ data: clientData[url] }));
+    const { container } = renderPage(<Dashboard />);
+
+    expect(await screen.findByText(/Logged Work Value:/)).toHaveTextContent('₹300');
+    expect(screen.getByText('15% Consumed')).toBeInTheDocument();
+    expect(container.querySelector('[style="width: 15%;"]')).toBeInTheDocument();
+  });
+
   it('shows skeletons, not fake zeros, while loading', () => {
     api.get.mockReturnValue(new Promise(() => {}));
     renderPage(<Dashboard />);
