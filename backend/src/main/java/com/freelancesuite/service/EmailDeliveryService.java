@@ -4,12 +4,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +27,12 @@ public class EmailDeliveryService {
     @Value("${app.email.resend-api-key:}") private String resendApiKey;
     @Value("${app.email.resend-from:}") private String resendFrom;
     @Value("${app.email.frontend-base-url:http://localhost:5173}") private String frontendBaseUrl;
+    @Value("${app.email.resend-url:https://api.resend.com/emails}") private String resendUrl;
+    // Account emails are sent inside the transaction that creates the token (and, for reset/verify links,
+    // while the user row is locked), so that a failed send rolls the token back and a retry works. These
+    // timeouts bound how long that lock and the request thread can be held if Resend is slow or unreachable.
+    @Value("${app.email.connect-timeout:PT5S}") private Duration connectTimeout;
+    @Value("${app.email.read-timeout:PT10S}") private Duration readTimeout;
 
     public String link(String path, String token) {
         String base = frontendBaseUrl.replaceAll("/+$", "");
@@ -50,7 +59,7 @@ public class EmailDeliveryService {
         }
         try {
             getRestClient().post()
-                    .uri("https://api.resend.com/emails")
+                    .uri(resendUrl)
                     .header("Authorization", "Bearer " + resendApiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("from", resendFrom, "to", List.of(to), "subject", subject, "html", html))
@@ -67,7 +76,10 @@ public class EmailDeliveryService {
 
     private RestClient getRestClient() {
         if (restClient == null) {
-            restClient = RestClient.create();
+            HttpClient http = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
+            JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(http);
+            factory.setReadTimeout(readTimeout);
+            restClient = RestClient.builder().requestFactory(factory).build();
         }
         return restClient;
     }
