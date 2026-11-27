@@ -119,8 +119,7 @@ export default function Dashboard() {
   const blockedTasks = clientTasks.filter((t) => t.status === 'REVIEW');
 
   const totalBudget = recentProjects.reduce((sum, p) => sum + (p.budget || 0), 0);
-  const totalLoggedHours = clientTasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
-  const estConsumedValue = totalLoggedHours * 150;
+  const estConsumedValue = recentProjects.reduce((sum, p) => sum + (p.loggedValue || 0), 0);
   const budgetConsumedPercent = totalBudget > 0 ? Math.min(100, Math.round((estConsumedValue / totalBudget) * 100)) : 0;
 
   return (

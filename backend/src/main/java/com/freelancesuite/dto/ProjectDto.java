@@ -25,6 +25,7 @@ public class ProjectDto {
     @NotNull(message = "Budget is required")
     @DecimalMin(value = "0", message = "Budget cannot be negative")
     private BigDecimal budget;
+    private BigDecimal loggedValue;
 
     private LocalDate deadline;
     private List<UserDto> teamMembers;
@@ -32,13 +33,14 @@ public class ProjectDto {
 
     public ProjectDto() {}
 
-    public ProjectDto(Long id, Long clientId, String clientName, String title, String description, BigDecimal budget, LocalDate deadline, List<UserDto> teamMembers, LocalDateTime createdAt) {
+    public ProjectDto(Long id, Long clientId, String clientName, String title, String description, BigDecimal budget, BigDecimal loggedValue, LocalDate deadline, List<UserDto> teamMembers, LocalDateTime createdAt) {
         this.id = id;
         this.clientId = clientId;
         this.clientName = clientName;
         this.title = title;
         this.description = description;
         this.budget = budget;
+        this.loggedValue = loggedValue;
         this.deadline = deadline;
         this.teamMembers = teamMembers;
         this.createdAt = createdAt;
@@ -53,6 +55,7 @@ public class ProjectDto {
         private String title;
         private String description;
         private BigDecimal budget;
+        private BigDecimal loggedValue;
         private LocalDate deadline;
         private List<UserDto> teamMembers;
         private LocalDateTime createdAt;
@@ -63,12 +66,13 @@ public class ProjectDto {
         public ProjectDtoBuilder title(String title) { this.title = title; return this; }
         public ProjectDtoBuilder description(String description) { this.description = description; return this; }
         public ProjectDtoBuilder budget(BigDecimal budget) { this.budget = budget; return this; }
+        public ProjectDtoBuilder loggedValue(BigDecimal loggedValue) { this.loggedValue = loggedValue; return this; }
         public ProjectDtoBuilder deadline(LocalDate deadline) { this.deadline = deadline; return this; }
         public ProjectDtoBuilder teamMembers(List<UserDto> teamMembers) { this.teamMembers = teamMembers; return this; }
         public ProjectDtoBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public ProjectDto build() {
-            return new ProjectDto(id, clientId, clientName, title, description, budget, deadline, teamMembers, createdAt);
+            return new ProjectDto(id, clientId, clientName, title, description, budget, loggedValue, deadline, teamMembers, createdAt);
         }
     }
 
@@ -84,6 +88,8 @@ public class ProjectDto {
     public void setDescription(String description) { this.description = description; }
     public BigDecimal getBudget() { return budget; }
     public void setBudget(BigDecimal budget) { this.budget = budget; }
+    public BigDecimal getLoggedValue() { return loggedValue; }
+    public void setLoggedValue(BigDecimal loggedValue) { this.loggedValue = loggedValue; }
     public LocalDate getDeadline() { return deadline; }
     public void setDeadline(LocalDate deadline) { this.deadline = deadline; }
     public List<UserDto> getTeamMembers() { return teamMembers; }
